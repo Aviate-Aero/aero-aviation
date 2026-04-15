@@ -18,16 +18,21 @@ export function Starfield() {
 
   useEffect(() => {
     setStars(
-      Array.from({ length: 280 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 120 - 20, // start some stars off-screen left so drift looks continuous
-        y: Math.random() * 120,       // start some stars off-screen bottom
-        size: Math.random() < 0.15 ? Math.random() * 2.5 + 1.5 : Math.random() * 1 + 0.4,
-        twinkleDuration: Math.random() * 3 + 1.5,
-        twinkleDelay: Math.random() * 6,
-        driftDuration: Math.random() * 15 + 8, // 8–23s — fast enough to notice
-        driftDelay: Math.random() * 15,
-      }))
+      Array.from({ length: 280 }, (_, i) => {
+        const twinkleDuration = Math.random() * 3 + 1.5
+        const driftDuration = Math.random() * 15 + 8
+        return {
+          id: i,
+          x: Math.random() * 120 - 20,
+          y: Math.random() * 120,
+          size: Math.random() < 0.15 ? Math.random() * 2.5 + 1.5 : Math.random() * 1 + 0.4,
+          twinkleDuration,
+          // Negative delay = animation starts already in progress (random phase)
+          twinkleDelay: -(Math.random() * twinkleDuration),
+          driftDuration,
+          driftDelay: -(Math.random() * driftDuration),
+        }
+      })
     )
   }, [])
 

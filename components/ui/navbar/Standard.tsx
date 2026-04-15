@@ -35,19 +35,42 @@ export function Navbar() {
         isVisible ? "top-8 opacity-100" : "-top-24 opacity-0"
       }`}
     >
-      <div className="bg-black/50 backdrop-blur-[120px] rounded-full px-8 py-3 flex items-center gap-8 shadow-lg border border-white/10 w-full">
-        {/* Logo */}
+      {/* REDUCED vertical padding: changed py-3 to py-1 */}
+      <div className="bg-black/50 backdrop-blur-[120px] rounded-full px-8 py-1 flex items-center gap-8 shadow-lg border border-white/10 w-full">
+        {/* Logo - dimensions unchanged */}
         <div className="flex items-center">
-          <Image src="/logos/officialLogo.svg" alt="Aero Aviation" width={150} height={32} className="h-8 w-auto" />
+          <Link href="/">
+          <Image 
+            src="/logos/officialLogo.svg" 
+            alt="Aero Aviation" 
+            width={350}           
+            height={76}      
+            className="h-[86px] w-auto"
+            priority
+          />
+         </Link>
         </div>
 
         {/* Desktop Menu Links */}
-        <div className="hidden md:flex items-center justify-end gap-4 flex-1 pr-4">
-          {/* Dropdown Container */}
-          <div className="flex items-center justify-between rounded-full border border-zinc-700">
-            {/* <ResourcesDropdown />
-            <ToolsDropdown /> */}
-          </div>
+        <div className="hidden md:flex items-center justify-end gap-6 flex-1">
+          <Link href="/fuel" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
+            Jet Fuel
+          </Link>
+          <Link href="/charter" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
+            Charter Services
+          </Link>
+          <Link href="/pricing" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
+            Pricing
+          </Link>
+          <Link href="/about" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
+            About
+          </Link>
+          <Link
+            href="/aero-data"
+            className="px-5 py-2.5 rounded-full bg-sky-500/15 border border-sky-500/40 text-sky-400 text-sm font-medium hover:bg-sky-500/25 hover:border-sky-500/70 hover:text-sky-300 transition-all duration-300"
+          >
+            Aero Data App
+          </Link>
           <Link
             href="/contact"
             className="px-[18px] py-[10px] rounded-full border border-sky-500 bg-sky-500 text-white font-medium hover:scale-105 transition-transform duration-500"
