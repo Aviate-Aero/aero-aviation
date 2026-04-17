@@ -3,10 +3,12 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 import { LenisProvider } from "@/components/lenisProvider/Standard"
 import "./globals.css"
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/lib/utils"
+import { Navbar } from "@/components/ui/navbar/Standard"
+import { Starfield } from "@/components/ui/starfield/Standard"
+import { FooterSection } from "@/components/ui/footer/Standard"
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
@@ -23,8 +25,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", inter.variable)}>
-      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body
+        className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-black text-white`}
+      >
+          <Starfield />
+
+        <Navbar />
         <LenisProvider>{children}</LenisProvider>
+        <FooterSection />
       </body>
     </html>
   )

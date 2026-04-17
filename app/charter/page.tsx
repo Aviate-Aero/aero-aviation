@@ -59,9 +59,7 @@ export default function CharterPage() {
   }
 
   return (
-    <main className="relative bg-black text-white overflow-hidden">
-      <Navbar />
-      <Starfield />
+    <main className="relative text-white overflow-hidden">
 
       {/* Services Section */}
       <section id="charter-services" className="relative z-20 pt-8 pb-24 mt-40">
@@ -166,10 +164,6 @@ export default function CharterPage() {
           </motion.div>
         </div>
       </section>
-
-      <div className="relative z-20">
-        <FooterSection />
-      </div>
     </main>
   )
 }

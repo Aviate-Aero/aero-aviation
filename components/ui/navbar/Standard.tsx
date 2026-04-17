@@ -69,7 +69,7 @@ export function Navbar() {
             href="/aero-data"
             className="px-5 py-2.5 rounded-full bg-sky-500/15 border border-sky-500/40 text-sky-400 text-sm font-medium hover:bg-sky-500/25 hover:border-sky-500/70 hover:text-sky-300 transition-all duration-300"
           >
-            Aero Data App
+            Flight Core Intelligence
           </Link>
           <Link
             href="/contact"

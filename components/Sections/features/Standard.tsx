@@ -57,13 +57,13 @@ export function FeaturesSection() {
           className="mb-12"
         >
           <p className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-4">
-            Aero Data Platform
+            Flight Core Intelligence
           </p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light text-zinc-100 mb-4">
             Aviation intelligence,<br />redefined.
           </h2>
           <p className="text-zinc-400 max-w-xl text-balance text-lg">
-            From live METAR decoding to real-time flight tracking — Aero Data gives
+            From live METAR decoding to real-time flight tracking — Flight Core Intelligence gives
             pilots, dispatchers, and enthusiasts a complete operational picture.
           </p>
         </motion.div>

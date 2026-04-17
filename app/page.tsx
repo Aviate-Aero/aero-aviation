@@ -3,9 +3,7 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/buttons/Standard"
 import { Starfield } from "@/components/ui/starfield/Standard"
-import { Navbar } from "@/components/ui/navbar/Standard"
 import { FeaturesSection } from "@/components/Sections/features/Standard"
-import { FooterSection } from "@/components/ui/footer/Standard"
 import { CircleArrowRight } from "lucide-react"
 
 export default function Home() {
@@ -15,8 +13,6 @@ export default function Home() {
 
   return (
     <main className="relative bg-black text-white overflow-hidden">
-      <Navbar />
-      <Starfield />
 
       {/* Hero Section */}
       <section className="relative z-20 min-h-[78vh] flex flex-col justify-center">
@@ -58,7 +54,6 @@ export default function Home() {
 
       <div className="relative z-20">
         <FeaturesSection />
-        <FooterSection />
       </div>
     </main>
   )
