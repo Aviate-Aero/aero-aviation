@@ -68,7 +68,7 @@ export default function AppSelector() {
       title: "Dispatch",
       description: "Review and manage flight plans, coordinate operations, and ensure regulatory compliance",
       icon: <FileText className="h-6 w-6" />,
-      route: "/aerodata/dispatch",
+      route: "/flight-intel/dispatch",
     },
     {
       title: "Flight Tracker",
