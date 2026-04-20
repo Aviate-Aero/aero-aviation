@@ -8,8 +8,6 @@ import { Input } from "@/components/input/Standard"
 import { Label } from "@/components/label/Standard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card/Standard"
 import { Starfield } from "@/components/ui/starfield/Standard"
-import { Navbar } from "@/components/ui/navbar/Standard"
-import { FooterSection } from "@/components/ui/footer/Standard"
 import { useAuth, validateCredentials, fetchSubscriptionStatus } from "./auth-context"
 import { Lock, User, ArrowRight, AlertCircle, Plane } from "lucide-react"
 
@@ -67,8 +65,6 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
   return (
     <main className="relative bg-black text-white overflow-hidden">
-      <Navbar />
-      <Starfield />
 
       <section className="relative z-20 min-h-screen flex items-center justify-center py-20 px-4">
         <div className="container mx-auto max-w-6xl">
@@ -240,8 +236,6 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           </div>
         </div>
       </section>
-
-      <FooterSection />
     </main>
   )
 }

@@ -335,7 +335,7 @@ export default function WeatherTracker() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   {
-                    label: '~5,000 ft',
+                    label: '5,000 ft',
                     hPa: '850 hPa',
                     speed: weather.hourly.windspeed_850hpa[nowHourIndex],
                     dir: weather.hourly.winddirection_850hpa[nowHourIndex],
@@ -343,7 +343,7 @@ export default function WeatherTracker() {
                     dot: 'bg-emerald-400',
                   },
                   {
-                    label: '~10,000 ft',
+                    label: '10,000 ft',
                     hPa: '700 hPa',
                     speed: weather.hourly.windspeed_700hpa[nowHourIndex],
                     dir: weather.hourly.winddirection_700hpa[nowHourIndex],
@@ -351,7 +351,7 @@ export default function WeatherTracker() {
                     dot: 'bg-sky-400',
                   },
                   {
-                    label: '~18,000 ft',
+                    label: '18,000 ft',
                     hPa: '500 hPa',
                     speed: weather.hourly.windspeed_500hpa[nowHourIndex],
                     dir: weather.hourly.winddirection_500hpa[nowHourIndex],

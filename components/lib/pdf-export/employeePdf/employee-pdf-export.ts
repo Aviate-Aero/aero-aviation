@@ -670,8 +670,9 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   y += 9
 
   const boxRadius = 2
-  const boxH = 20
+  const boxH = 24 // increased height to fit longer address
 
+  // UK OFFICE box
   doc.setFillColor(...ID_BG)
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.25)
@@ -682,45 +683,19 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(5.8)
   doc.setTextColor(...ID_BLUE)
-  doc.text('US OFFICE', bX + 7, y + 4.5)
+  doc.text('UK OFFICE', bX + 7, y + 5)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   doc.setTextColor(...ID_DARK)
-  doc.text('15422 Ventura Blvd., Ste 201-1814', bX + 7, y + 9.5)
-  doc.text('Sherman Oaks, CA 91403', bX + 7, y + 14)
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6)
-  doc.setTextColor(...ID_MID)
-  doc.text('United States of America', bX + 7, y + 18.5)
+  // Split address into two lines to fit nicely
+  doc.text('Office 5170m, 3 Fitzroy Place, 1/1', bX + 7, y + 10.5)
+  doc.text('Sauchiehall Street, Finnieston', bX + 7, y + 15)
+  doc.text('Glasgow Central, G3 7RH', bX + 7, y + 19.5)
 
   y += boxH + 4
 
-  doc.setFillColor(...ID_BG)
-  doc.setDrawColor(...ID_LINE)
-  doc.setLineWidth(0.25)
-  doc.roundedRect(bX, y, bW, boxH, boxRadius, boxRadius, 'FD')
-  doc.setFillColor(...ID_BLUE)
-  doc.roundedRect(bX, y, 2.5, boxH, boxRadius, boxRadius, 'F')
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(5.8)
-  doc.setTextColor(...ID_BLUE)
-  doc.text('QATAR OFFICE', bX + 7, y + 6)
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6.5)
-  doc.setTextColor(...ID_DARK)
-  doc.text('West Bay Doha, Qatar', bX + 7, y + 12)
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6)
-  doc.setTextColor(...ID_MID)
-  doc.text('Dubai, United Arab Emirates', bX + 7, y + 17)
-
-  y += boxH + 4
-
+  // Email box (no second office)
   const emailBoxH = 13
   doc.setFillColor(...ID_BG)
   doc.setDrawColor(...ID_LINE)
@@ -746,6 +721,7 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setTextColor(...ID_MUTED)
   doc.text('This card is the property of Aero Aviation. Unauthorized use is prohibited.', cx, y, { align: 'center', maxWidth: bW })
 
+  // ── Outer card border ─────────────────────────────────────────────────────
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.5)
   doc.roundedRect(0.5, 0.5, W - 1, H - 1, 3, 3, 'S')

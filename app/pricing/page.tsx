@@ -3,8 +3,6 @@
 import { motion } from "framer-motion"
 import { Check } from "lucide-react"
 import Link from "next/link"
-import { Navbar } from "@/components/ui/navbar/Standard"
-import { FooterSection } from "@/components/ui/footer/Standard"
 
 const plans = [
   {
@@ -61,7 +59,6 @@ const plans = [
 export default function PricingPage() {
   return (
     <main className="relative bg-black text-white min-h-screen">
-      <Navbar />
 
       <section className="pt-40 pb-24">
         <div className="container mx-auto px-6 lg:px-12">
@@ -141,8 +138,6 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
-
-      <FooterSection />
     </main>
   )
 }

@@ -10,11 +10,18 @@ export default function AdminWelcomePage() {
   const router = useRouter()
 
   const handleLogout = () => {
-  sessionStorage.removeItem("admin_authenticated");
-  router.push("/flight-intel/admin/login"); // was: "/flight-intel/admin"
-  };
+    sessionStorage.removeItem("admin_authenticated")
+    router.push("/flight-intel/admin/login")
+  }
 
   const adminCards = [
+    {
+      title: "Aircraft Manager",
+      description: "Add or remove Aircraft for Flight Core APP",
+      icon: Users,
+      href: "/flight-intel/admin/aircraftManager",
+      color: "sky",
+    },
     {
       title: "Flight Core Users",
       description: "Add or remove users for Flight Core APP",
@@ -33,12 +40,11 @@ export default function AdminWelcomePage() {
       title: "Email",
       description: "Compose and send branded emails to staff or clients",
       icon: Mail,
-      href: "/aerodata/admin/email",
+      href: "/flight-intel/admin/email",
       color: "blue",
     },
   ]
 
-  // Helper to get the correct Tailwind color classes (avoid dynamic string interpolation)
   const getColorClasses = (color: "sky" | "blue") => {
     if (color === "sky") {
       return {
@@ -85,8 +91,8 @@ export default function AdminWelcomePage() {
             </p>
           </motion.div>
 
-          {/* Cards Grid – using CSS Grid for equal height */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto place-items-stretch">
+          {/* Cards Grid – single row on lg+ screens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
             {adminCards.map((card, index) => {
               const colors = getColorClasses(card.color as "sky" | "blue")
               return (
@@ -100,36 +106,36 @@ export default function AdminWelcomePage() {
                 >
                   <Link
                     href={card.href}
-                    className={`group relative flex flex-col h-full p-8 bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-zinc-800/50 ${colors.border} transition-all duration-500 ${colors.shadow} overflow-hidden`}
+                    className={`group relative flex flex-col h-full p-6 lg:p-8 bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-zinc-800/50 ${colors.border} transition-all duration-500 ${colors.shadow} overflow-hidden`}
                   >
                     {/* Gradient overlay */}
                     <div
                       className={`absolute inset-0 bg-gradient-to-br ${colors.gradientFrom} ${colors.gradientTo} transition-all duration-500`}
                     />
-                    
+
                     <div className="relative z-10 flex flex-col h-full">
                       {/* Icon */}
                       <div
-                        className={`w-16 h-16 ${colors.iconBg} rounded-xl flex items-center justify-center mb-6 mx-auto transition-all duration-300 border ${colors.iconBorder}`}
+                        className={`w-14 h-14 lg:w-16 lg:h-16 ${colors.iconBg} rounded-xl flex items-center justify-center mb-4 lg:mb-6 mx-auto transition-all duration-300 border ${colors.iconBorder}`}
                       >
-                        <card.icon className={`w-8 h-8 ${colors.iconText} transition-colors`} />
+                        <card.icon className={`w-7 h-7 lg:w-8 lg:h-8 ${colors.iconText} transition-colors`} />
                       </div>
-                      
+
                       {/* Title */}
-                      <h3 className="text-2xl font-light text-white mb-3 text-center">
+                      <h3 className="text-xl lg:text-2xl font-light text-white mb-2 lg:mb-3 text-center">
                         {card.title}
                       </h3>
-                      
-                      {/* Description – flex-1 pushes the link down */}
-                      <p className="text-zinc-400 text-sm leading-relaxed text-center flex-1">
+
+                      {/* Description */}
+                      <p className="text-zinc-400 text-xs lg:text-sm leading-relaxed text-center flex-1">
                         {card.description}
                       </p>
-                      
+
                       {/* Access link */}
                       <div
-                        className={`flex items-center justify-center gap-2 mt-6 ${colors.linkText} font-medium group-hover:gap-3 transition-all duration-300`}
+                        className={`flex items-center justify-center gap-2 mt-4 lg:mt-6 ${colors.linkText} font-medium group-hover:gap-3 transition-all duration-300`}
                       >
-                        <span>Access</span>
+                        <span className="text-sm lg:text-base">Access</span>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
