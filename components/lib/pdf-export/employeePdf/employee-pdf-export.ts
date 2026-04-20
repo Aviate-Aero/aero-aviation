@@ -36,6 +36,44 @@ async function urlToBase64(url: string): Promise<string | null> {
 }
 
 /**
+ * Ensures an image is in a raster format supported by jsPDF (PNG/JPEG).
+ * If the input is SVG, it converts it to PNG using a canvas.
+ */
+async function ensureRasterImage(base64: string): Promise<string> {
+  if (!base64.startsWith('data:image/svg+xml')) {
+    // Already a raster format
+    return base64
+  }
+
+  if (typeof window === 'undefined') {
+    // Server-side fallback – cannot convert, return as is (jsPDF may still fail)
+    return base64
+  }
+
+  return new Promise((resolve, reject) => {
+    const img = new window.Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      // Set a reasonable width for the rasterised logo (e.g., 400px)
+      const targetWidth = 400
+      const scale = targetWidth / img.width
+      canvas.width = targetWidth
+      canvas.height = img.height * scale
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas context not available'))
+        return
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => reject(new Error('Failed to load SVG for conversion'))
+    img.src = base64
+  })
+}
+
+/**
  * Draws the image through a canvas so the browser normalises EXIF orientation.
  * This fixes the "tilted photo" issue with phone-taken pictures.
  */
@@ -112,14 +150,6 @@ async function loadPhoto(url: string): Promise<string | null> {
   return fixOrientation(raw)
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  active: 'ACTIVE', inactive: 'INACTIVE', 'on-leave': 'ON LEAVE',
-}
-const STATUS_COLOR: Record<string, [number, number, number]> = {
-  active:    [22, 163,  74],
-  inactive:  [190,  40,  40],
-  'on-leave':[180, 110,  10],
-}
 const CURRENCY_SYM: Record<string, string> = { PKR: '₨', USD: '$', QAR: 'QR' }
 
 // ─── Employee Profile PDF ─────────────────────────────────────────────────────
@@ -142,9 +172,6 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   const line:  RGB = [218,225,238]
   const cardBg:RGB = [255,255,255]
 
-  const statusClr: RGB = STATUS_COLOR[employee.status] ?? mid
-  const statusLbl = STATUS_LABEL[employee.status] ?? employee.status.toUpperCase()
-
   doc.setFillColor(...pageBg)
   doc.rect(0, 0, W, 297, 'F')
 
@@ -156,7 +183,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   doc.setTextColor(...white)
-  doc.text('Aerodata Human Resource Management', M, 18)
+  doc.text('Flight Intelligence Core Human Resource Management', M, 18)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(160, 185, 225)
@@ -165,7 +192,6 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...white)
-  doc.text('EMPLOYEE PROFILE', W - M, 18, { align: 'right' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(160, 185, 225)
@@ -224,15 +250,6 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFontSize(8.5)
   doc.setTextColor(...blue)
   doc.text(employee.department, nX, pCardY + 32)
-
-  const sLabel = statusLbl
-  doc.setFillColor(...statusClr)
-  const sBadgeW = doc.getTextWidth(sLabel) + 8
-  doc.roundedRect(nX, pCardY + 36, sBadgeW, 7, 1.5, 1.5, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(6.5)
-  doc.setTextColor(...white)
-  doc.text(sLabel, nX + sBadgeW / 2, pCardY + 41, { align: 'center' })
 
   doc.setFillColor(...navy)
   doc.roundedRect(nX, pCardY + 47, 54, 14, 2, 2, 'F')
@@ -313,7 +330,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
     : '—'
   section('Employment Details', [
     ['Department', employee.department,  'Job Title', employee.role],
-    ['Joining Date', joinDate,           'Status',    statusLbl],
+    ['Joining Date', joinDate],
   ])
 
   if (employee.salary != null && employee.salary_currency) {
@@ -338,7 +355,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6)
   doc.setTextColor(...muted)
-  doc.text('This document is generated from Aerodata Pro and is confidential.', W / 2, y + 27, { align: 'center' })
+  doc.text('This document is generated from Flight Intelligence Core and is confidential.', W / 2, y + 27, { align: 'center' })
 
   doc.setFillColor(...navy)
   doc.rect(0, 285, W, 12, 'F')
@@ -347,7 +364,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   doc.setTextColor(160, 185, 225)
-  doc.text('Aviate Pro  |  Aerodata Pro', M, 292.5)
+  doc.text('Flight Intelligence Core  |  Flight Intelligence Core', M, 292.5)
   doc.text('Confidential — Internal Use Only', W / 2, 292.5, { align: 'center' })
   doc.text('Page 1 of 1', W - M, 292.5, { align: 'right' })
 
@@ -374,9 +391,6 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
   const doc = new jsPDF({ unit: 'mm', format: [W, H], orientation: 'portrait' })
   const cx = W / 2
 
-  const statusClr: RGB = STATUS_COLOR[employee.status] ?? ID_MID
-  const statusLbl = STATUS_LABEL[employee.status] ?? employee.status.toUpperCase()
-
   // ── Card background ───────────────────────────────────────────────────────
   doc.setFillColor(...ID_WHITE)
   doc.rect(0, 0, W, H, 'F')
@@ -391,26 +405,41 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
   // Logo
   const logoB64 = await urlToBase64(
     typeof window !== 'undefined'
-      ? `${window.location.origin}/logo/officialLogoWhite.png`
-      : '/logo/officialLogoWhite.png'
+      ? `${window.location.origin}/logos/officialLogo.svg`
+      : '/logos/officialLogo.svg'
   )
   if (logoB64) {
-    const lH = 15, lW = 44
-    const logoY = (headerH - lH) / 2 - 5   // shifted up to leave room for "ME" + tagline
-    doc.addImage(logoB64, 'PNG', (W - lW) / 2, logoY, lW, lH)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(160, 185, 225)
-    doc.text('ME', cx, logoY + lH + 3.5, { align: 'center' })
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(160, 185, 225)
-    doc.text('Aviation Company', cx, logoY + lH + 8, { align: 'center' })
+    try {
+      // Convert SVG to PNG if necessary
+      const rasterLogo = await ensureRasterImage(logoB64)
+      const lH = 24, lW = 24
+      const logoY = (headerH - lH) / 2 - 5
+      doc.addImage(rasterLogo, 'PNG', (W - lW) / 2, logoY, lW, lH)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(160, 185, 225)
+      doc.text('ME', cx, logoY + lH + 0.5, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(160, 185, 225)
+      doc.text('Aviation Company', cx, logoY + lH + 4, { align: 'center' })
+    } catch (err) {
+      console.warn('Logo conversion failed, using fallback text', err)
+      // Fallback to text if conversion fails
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(13)
+      doc.setTextColor(...ID_WHITE)
+      doc.text('Aero Aviation', cx, headerH / 2, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(160, 185, 225)
+      doc.text('Aviation Company', cx, headerH / 2 + 4, { align: 'center' })
+    }
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(13)
     doc.setTextColor(...ID_WHITE)
-    doc.text('AVIATE PRO ME', cx, headerH / 2, { align: 'center' })
+    doc.text('Aero Aviation', cx, headerH / 2, { align: 'center' })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(160, 185, 225)
@@ -418,20 +447,17 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
   }
 
   // ── Photo ─────────────────────────────────────────────────────────────────
-  // Smaller: 36×44mm (was 46×55)
   const pW = 36, pH = 44
-  const pX = (W - pW) / 2   // centered: (86-36)/2 = 25
-  const pY = headerH + 6    // 28+6 = 34
+  const pX = (W - pW) / 2
+  const pY = headerH + 6
 
   let photoLoaded = false
   if (employee.photo_url) {
     const img = await loadPhotoRounded(employee.photo_url, 0.1)
     if (img) {
       try {
-        // Rounded shadow offset behind photo
         doc.setFillColor(195, 208, 230)
         doc.roundedRect(pX + 1.5, pY + 1.5, pW, pH, 2.5, 2.5, 'F')
-        // Photo (already has rounded corners baked in via canvas)
         doc.addImage(img, 'PNG', pX, pY, pW, pH)
         photoLoaded = true
       } catch { /* ignore */ }
@@ -449,7 +475,6 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
   }
 
   // ── Name & Role ───────────────────────────────────────────────────────────
-  // pY + pH = 34+44 = 78; y starts at 78+6 = 84
   let y = pY + pH + 6
 
   doc.setFont('helvetica', 'bold')
@@ -464,15 +489,8 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
   doc.text(employee.role, cx, y, { align: 'center', maxWidth: W - 10 })
   y += 5
 
-  // Status pill
-  const pillW = Math.min(doc.getTextWidth(statusLbl) + 8, 32)
-  doc.setFillColor(...statusClr)
-  doc.roundedRect(cx - pillW / 2, y, pillW, 5.5, 1.5, 1.5, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(5.5)
-  doc.setTextColor(...ID_WHITE)
-  doc.text(statusLbl, cx, y + 3.8, { align: 'center' })
-  y += 9.5   // pill top 94, so y = 94+9.5 = 103.5
+  // Status pill removed as per the original code (not used)
+  y += 9.5
 
   // ── Info table ────────────────────────────────────────────────────────────
   const tX = 6, tW = W - 12, cH = 8, col1 = tW / 2
@@ -504,24 +522,19 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
       : '—',
     false
   )
-  // After 3 rows: y = 103.5 + 24 = 127.5
 
   // ── Footer — crew vs standard ─────────────────────────────────────────────
   const CREW_DEPTS = new Set(['Operations', 'Cabin Crew', 'Ground Crew', 'Dispatch'])
   const isCrewMember = CREW_DEPTS.has(employee.department)
 
   if (isCrewMember) {
-    const footerY = H - 11   // 131mm
-
-    // Navy footer bar
+    const footerY = H - 11
     doc.setFillColor(...ID_NAVY)
     doc.rect(0, footerY, W, 11, 'F')
-    // Blue accent strip at top of footer
     doc.setFillColor(...ID_BLUE)
     doc.rect(0, footerY, W, 1.5, 'F')
 
-    // "CREW MEMBER" — centered in the left portion (stamp occupies right ~17mm)
-    const textCx = (W - 17) / 2   // ≈ 34.5mm
+    const textCx = (W - 17) / 2
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
     doc.setCharSpace(1)
@@ -529,24 +542,14 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
     doc.text('CREW MEMBER', textCx, footerY + 7, { align: 'center' })
     doc.setCharSpace(0)
 
-    // ── Circular crew stamp — bottom-right, fully below table ────────────────
-    // Table ends at ~127.5mm; stamp top must be ≥128mm
-    const sR = 7, sCx = W - 10, sCy = H - 10   // center at (76, 132)
-
-    // White fill (shows stamp cleanly over both navy footer and any content)
+    const sR = 7, sCx = W - 10, sCy = H - 10
     doc.setFillColor(...ID_WHITE)
     doc.circle(sCx, sCy, sR, 'F')
-
-    // Outer ring
     doc.setDrawColor(...ID_NAVY)
     doc.setLineWidth(0.7)
     doc.circle(sCx, sCy, sR, 'S')
-
-    // Inner ring
     doc.setLineWidth(0.3)
     doc.circle(sCx, sCy, sR - 2, 'S')
-
-    // Decorative dots around the ring
     for (let angle = 0; angle < 360; angle += 15) {
       const rad = (angle * Math.PI) / 180
       doc.setFillColor(...ID_NAVY)
@@ -556,32 +559,26 @@ export async function downloadEmployeeIDCardFront(employee: EmployeeForPDF): Pro
         0.22, 'F'
       )
     }
-
-    // "CREW" bold text — vertically centered in stamp
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(6.5)
     doc.setTextColor(...ID_NAVY)
     doc.text('CREW', sCx, sCy + 1.2, { align: 'center' })
-
-    // Symmetric decorative lines above and below text
     doc.setDrawColor(...ID_NAVY)
     doc.setLineWidth(0.3)
     doc.line(sCx - 3, sCy - 2, sCx + 3, sCy - 2)
     doc.line(sCx - 3, sCy + 2.5, sCx + 3, sCy + 2.5)
-
   } else {
-    // Standard branding strip
-    y += 5   // → 132.5
+    y += 5
     doc.setDrawColor(...ID_LINE)
     doc.setLineWidth(0.25)
     doc.line(tX, y, W - tX, y)
-    y += 4   // → 136.5
+    y += 4
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(5.5)
     doc.setTextColor(...ID_MUTED)
   }
 
-  // ── Outer card border (drawn last — visually clips any stray edges) ────────
+  // ── Outer card border ─────────────────────────────────────────────────────
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.5)
   doc.roundedRect(0.5, 0.5, W - 1, H - 1, 3, 3, 'S')
@@ -596,8 +593,8 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   const H = 142
   const doc = new jsPDF({ unit: 'mm', format: [W, H], orientation: 'portrait' })
   const cx = W / 2
-  const bX = 8          // box left margin
-  const bW = W - 16     // box width = 70mm
+  const bX = 8
+  const bW = W - 16
 
   // ── Card background ───────────────────────────────────────────────────────
   doc.setFillColor(...ID_WHITE)
@@ -613,54 +610,65 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   // Logo in header
   const logoB64 = await urlToBase64(
     typeof window !== 'undefined'
-      ? `${window.location.origin}/logo/officialLogoWhite.png`
-      : '/logo/officialLogoWhite.png'
+      ? `${window.location.origin}/logos/officialLogo.svg`
+      : '/logos/officialLogo.svg'
   )
   if (logoB64) {
-    const lH = 16, lW = 46
-    const logoY = (headerH - lH) / 2 - 5   // shifted up to leave room for "ME"
-    doc.addImage(logoB64, 'PNG', (W - lW) / 2, logoY, lW, lH)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(160, 185, 225)
-    doc.text('ME', cx, logoY + lH + 4, { align: 'center' })
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(160, 185, 225)
-    doc.text('; Aviation Company ;', cx, logoY + lH + 8.5, { align: 'center' })
+    try {
+      const rasterLogo = await ensureRasterImage(logoB64)
+      const lH = 24, lW = 24
+      const logoY = (headerH - lH) / 2 - 5
+      doc.addImage(rasterLogo, 'PNG', (W - lW) / 2, logoY, lW, lH)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(160, 185, 225)
+      doc.text('ME', cx, logoY + lH + 0.5, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(160, 185, 225)
+      doc.text('Aviation Company', cx, logoY + lH + 4, { align: 'center' })
+    } catch (err) {
+      console.warn('Logo conversion failed, using fallback text', err)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.setTextColor(...ID_WHITE)
+      doc.text('Aero Aviation', cx, headerH / 2, { align: 'center' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(5)
+      doc.setTextColor(160, 185, 225)
+      doc.text('Aviation Company', cx, headerH / 2 + 4, { align: 'center' })
+    }
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(14)
     doc.setTextColor(...ID_WHITE)
-    doc.text('AVIATE PRO ME', cx, headerH / 2, { align: 'center' })
+    doc.text('Aero Aviation', cx, headerH / 2, { align: 'center' })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(5)
     doc.setTextColor(160, 185, 225)
-    doc.text('; Aviation Company ;', cx, headerH / 2 + 4, { align: 'center' })
+    doc.text('Aviation Company', cx, headerH / 2 + 4, { align: 'center' })
   }
 
   // ── "IF FOUND" section ────────────────────────────────────────────────────
-  let y = headerH + 12   // 52
+  let y = headerH + 12
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   doc.setTextColor(...ID_MUTED)
   doc.text('IF FOUND, PLEASE RETURN TO:', cx, y, { align: 'center' })
-  y += 8   // 60
+  y += 8
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(15)
   doc.setTextColor(...ID_NAVY)
-  doc.text('AVIATE PRO', cx, y, { align: 'center' })
-  y += 5   // 65
+  doc.text('Aero Aviation', cx, y, { align: 'center' })
+  y += 5
 
-  // Short blue accent line under company name
   doc.setDrawColor(...ID_BLUE)
   doc.setLineWidth(0.8)
   doc.line(cx - 14, y, cx + 14, y)
-  y += 9   // 74
+  y += 9
 
-  // ── US Office box ─────────────────────────────────────────────────────────
   const boxRadius = 2
   const boxH = 20
 
@@ -668,8 +676,6 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.25)
   doc.roundedRect(bX, y, bW, boxH, boxRadius, boxRadius, 'FD')
-
-  // Blue left accent on box
   doc.setFillColor(...ID_BLUE)
   doc.roundedRect(bX, y, 2.5, boxH, boxRadius, boxRadius, 'F')
 
@@ -689,14 +695,12 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setTextColor(...ID_MID)
   doc.text('United States of America', bX + 7, y + 18.5)
 
-  y += boxH + 4   // 98
+  y += boxH + 4
 
-  // ── UAE Office box ────────────────────────────────────────────────────────
   doc.setFillColor(...ID_BG)
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.25)
   doc.roundedRect(bX, y, bW, boxH, boxRadius, boxRadius, 'FD')
-
   doc.setFillColor(...ID_BLUE)
   doc.roundedRect(bX, y, 2.5, boxH, boxRadius, boxRadius, 'F')
 
@@ -715,16 +719,13 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setTextColor(...ID_MID)
   doc.text('Dubai, United Arab Emirates', bX + 7, y + 17)
 
-  y += boxH + 4   // 122
+  y += boxH + 4
 
-  // ── Email box ─────────────────────────────────────────────────────────────
   const emailBoxH = 13
-
   doc.setFillColor(...ID_BG)
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.25)
   doc.roundedRect(bX, y, bW, emailBoxH, boxRadius, boxRadius, 'FD')
-
   doc.setFillColor(...ID_BLUE)
   doc.roundedRect(bX, y, 2.5, emailBoxH, boxRadius, boxRadius, 'F')
 
@@ -736,17 +737,15 @@ export async function downloadEmployeeIDCardBack(employee: EmployeeForPDF): Prom
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...ID_DARK)
-  doc.text('info@aviatepro.me', bX + 7, y + 10.5)
+  doc.text('info@aeroaviation.me', bX + 7, y + 10.5)
 
-  y += emailBoxH + 5   // 140
+  y += emailBoxH + 5
 
-  // ── Disclaimer ────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(4.8)
   doc.setTextColor(...ID_MUTED)
-  doc.text('This card is the property of Aviate Pro. Unauthorized use is prohibited.', cx, y, { align: 'center', maxWidth: bW })
+  doc.text('This card is the property of Aero Aviation. Unauthorized use is prohibited.', cx, y, { align: 'center', maxWidth: bW })
 
-  // ── Outer card border (drawn last) ────────────────────────────────────────
   doc.setDrawColor(...ID_LINE)
   doc.setLineWidth(0.5)
   doc.roundedRect(0.5, 0.5, W - 1, H - 1, 3, 3, 'S')

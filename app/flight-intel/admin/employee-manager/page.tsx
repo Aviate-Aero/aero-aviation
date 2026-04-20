@@ -304,7 +304,7 @@ export default function EmployeeManagerPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => router.push("/aerodata/admin/welcome")}
+                onClick={() => router.push("/flight-intel/admin")}
                 variant="outline"
                 className="border-zinc-700 bg-black/40 text-zinc-300 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/50 text-sm rounded-full"
               >
@@ -313,7 +313,7 @@ export default function EmployeeManagerPage() {
               <Button
                 onClick={() => {
                   sessionStorage.removeItem("admin_authenticated")
-                  router.push("/aerodata/admin/login")
+                  router.push("/flight-intel/admin/login")
                 }}
                 variant="outline"
                 className="border-zinc-700 bg-black/40 text-zinc-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/50 text-sm rounded-full"

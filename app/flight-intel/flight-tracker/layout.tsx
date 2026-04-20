@@ -15,7 +15,7 @@ export default function RootLayout({
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/aerodata")
+      router.push("/flight-intel")
     }
   }, [isAuthenticated, router])
 

@@ -62,7 +62,7 @@ export default function AppSelector() {
       title: "Flight Performance",
       description: "Compute optimal aircraft performance, generate trim sheets, and determine precise fuel loads",
       icon: <Database className="h-6 w-6" />,
-      route: "/aerodata/flightdata",
+      route: "/flight-intel/flightdata",
     },
     {
       title: "Dispatch",
@@ -80,7 +80,7 @@ export default function AppSelector() {
       title: "Aviation Intelligence",
       description: "Generate AI-powered aviation reports with real-time web search — incidents, NOTAMs, airspace closures, and more.",
       icon: <Bot className="h-6 w-6" />,
-      route: "/aerodata/aviation-report",
+      route: "/flight-intel/aviation-report",
     },
   ]
 

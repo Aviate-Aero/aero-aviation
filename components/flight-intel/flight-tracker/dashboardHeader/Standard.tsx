@@ -36,15 +36,15 @@ const DashboardHeader: React.FC = () => {
   }
 
   const handleBackToDashboard = () => {
-    router.push("/aerodata")
+    router.push("/flight-intel")
   }
 
   const handleNavigateToDispatch = () => {
-    router.push("/aerodata/dispatch")
+    router.push("/flight-intel/dispatch")
   }
 
   const handleNavigateToFlightPerformance = () => {
-    router.push("/aerodata/flightdata") // Adjust the path as needed
+    router.push("/flight-intel/flightdata") // Adjust the path as needed
   }
 
   // Determine which navigation button to show based on current path

@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
 
   const handleLogout = () => {
     sessionStorage.removeItem("admin_authenticated")
-    router.push("/aerodata/admin/login")
+    router.push("/flight-intel/admin/login")
   }
 
   const toggleUserExpansion = (userId: string) => {

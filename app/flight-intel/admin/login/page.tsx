@@ -80,7 +80,7 @@ export default function AdminLoginPage() {
               transition={{ delay: 0.4, duration: 0.4 }}
               className="mt-2 text-sm text-zinc-300"
             >
-              Secure access to Aerodata management
+              Secure access to Aero Aviation management
             </motion.p>
           </div>
 

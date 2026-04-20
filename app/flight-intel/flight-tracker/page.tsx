@@ -88,7 +88,7 @@ export default function FlightTrackerPage() {
         </span>
       </div>
       <Button
-        onClick={() => router.push('/aerodata/admin/welcome')}
+        onClick={() => router.push('/flight-intel/admin')}
         variant="outline"
         size="sm"
         className="border-zinc-700 bg-black/40 text-zinc-300 hover:bg-sky-500/10 hover:text-sky-400 hover:border-sky-500/50 rounded-full px-4 py-1.5 text-xs"

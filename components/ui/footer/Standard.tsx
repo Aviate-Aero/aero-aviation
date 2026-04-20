@@ -3,10 +3,10 @@ import Link from "next/link"
 
 const footerLinks = {
   platform: [
-    { label: "Features", href: "#features" },
-    { label: "Intelligence", href: "#" },
-    { label: "Fleet Analytics", href: "#" },
-    { label: "Documentation", href: "#" },
+    { label: "Flight Performance", href: "/flight-intel/flightdata" },
+    { label: "Dispatch", href: "/flight-intel/dispatch" },
+    { label: "Flight Tracker", href: "flight-intel/flight-tracker" },
+    { label: "Aviation Intelligence", href: "/flight-intel/aviation-report" },
   ],
   company: [
     { label: "About", href: "#" },
@@ -40,7 +40,7 @@ export function FooterSection() {
 
           {/* Platform Links */}
           <div>
-            <h4 className="font-heading text-sm font-semibold text-zinc-100 mb-4">Platform</h4>
+            <h4 className="font-heading text-sm font-semibold text-zinc-100 mb-4">Flight Core Intelligence</h4>
             <ul className="space-y-3">
               {footerLinks.platform.map((link) => (
                 <li key={link.label}>

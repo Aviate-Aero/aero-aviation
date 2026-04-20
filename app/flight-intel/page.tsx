@@ -5,7 +5,7 @@ import LoginForm from "@/components/flight-intel/auth/login-form"
 import AppSelector from "@/components/flight-intel/auth/page-selector"
 import { useAuth } from "@/components/flight-intel/auth/auth-context"
 
-export default function AerodataHome() {
+export default function FlightIntelHome() {
   const [showAppSelector, setShowAppSelector] = useState(false)
   const { isAuthenticated } = useAuth()
 
