@@ -152,10 +152,10 @@ export default function CharterPage() {
                 Contact Operations
               </a>
               <a
-                href="/pricing"
+                href="/contact"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-zinc-100 text-sm font-medium transition-all duration-300"
               >
-                View Fleet
+                More Details
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>

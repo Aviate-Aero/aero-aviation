@@ -425,10 +425,10 @@ export function FeaturesSection() {
 
           <div className="relative flex flex-col sm:flex-row md:flex-col lg:flex-row items-center gap-3 shrink-0">
             <a
-              href="/pricing"
+              href="/contact"
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium transition-all duration-300 hover:scale-[1.03] shadow-lg shadow-sky-500/20"
             >
-              Get Started Free
+              Contact Us
             </a>
             <a
               href="/pricing"
