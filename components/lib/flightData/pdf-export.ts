@@ -2,7 +2,8 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import type { AircraftData, CalculationParams } from "@/components/types/flightData/aircraft"
 
-interface ExportData {
+// ---------- Exported Interfaces ----------
+export interface ExportData {
   aircraft: AircraftData
   params: CalculationParams & {
     windDir?: number
@@ -21,7 +22,7 @@ interface ExportData {
   timestamp: string
 }
 
-interface VSpeedsData {
+export interface VSpeedsData {
   V1: number
   VR: number
   V2: number
@@ -30,81 +31,111 @@ interface VSpeedsData {
 }
 
 type AutoTableDoc = jsPDF & {
-  lastAutoTable?: {
-    finalY: number
+  lastAutoTable?: { finalY: number }
+}
+
+// ---------- Helper Functions ----------
+function setDarkBackground(doc: jsPDF) {
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  doc.setFillColor(15, 23, 42) // slate-900
+  doc.rect(0, 0, pageWidth, pageHeight, 'F')
+}
+
+function addDarkPage(doc: AutoTableDoc) {
+  doc.addPage()
+  setDarkBackground(doc)
+}
+
+function getThrustLabel(thrust: string): string {
+  switch (thrust) {
+    case "full": return "Full / TOGA (100%)"
+    case "d10": return "Derate 10% (TO-1 / FLEX)"
+    case "d20": return "Derate 20% (TO-2 / Deep FLEX)"
+    default: return thrust
   }
 }
 
+function capitalize(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
+
+// ---------- Main Export Function ----------
 export async function exportToPDF(data: ExportData): Promise<void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" }) as AutoTableDoc
-  const margin = 50
-  let y = margin
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 35
+  let y = 40
+  const footerHeight = 45
 
-  // Color palette
+  // Dark Theme Colors
   const colors = {
-    primary: [2, 106, 167] as [number, number, number],
-    secondary: [14, 165, 233] as [number, number, number],
+    background: [15, 23, 42] as [number, number, number],
+    surface: [30, 41, 59] as [number, number, number],
+    primary: [14, 165, 233] as [number, number, number],      // sky-500
+    accent: [56, 189, 248] as [number, number, number],       // sky-400
     success: [34, 197, 94] as [number, number, number],
     warning: [234, 179, 8] as [number, number, number],
     danger: [239, 68, 68] as [number, number, number],
-    dark: [30, 41, 59] as [number, number, number],
-    medium: [71, 85, 105] as [number, number, number],
-    light: [241, 245, 249] as [number, number, number],
-    white: [255, 255, 255] as [number, number, number]
+    textPrimary: [241, 245, 249] as [number, number, number],
+    textSecondary: [148, 163, 184] as [number, number, number],
+    border: [51, 65, 85] as [number, number, number]
   }
 
-  // Header with background color only
-  const pageWidth = doc.internal.pageSize.getWidth()
-  doc.setFillColor(...colors.primary)
-  doc.rect(0, 0, pageWidth, 80, 'F')
+  setDarkBackground(doc)
 
-  // Main title
-  doc.setFontSize(20)
+  // Header
+  doc.setFontSize(18)
   doc.setFont("helvetica", "bold")
-  doc.setTextColor(...colors.white)
-  doc.text("Flight Core Intelligence — Performance Report", margin, 50)
-  
-  y = 100
+  doc.setTextColor(...colors.primary)
+  doc.text("Flight Core Intelligence — Performance Report", margin, y)
+  y += 28
 
-  // Section styling function
-  const createSection = (title: string, data: string[][], columns: string[] = ["Parameter", "Value"]) => {
-    // Section header
-    doc.setFontSize(14)
+  // Section creator with page break awareness
+  const createSection = (title: string, body: string[][], columns: string[] = ["Parameter", "Value"]) => {
+    // Estimate table height: header row + body rows + padding
+    const estimatedHeight = 22 + body.length * 18
+    if (y + estimatedHeight > pageHeight - footerHeight) {
+      addDarkPage(doc)
+      y = 40
+    }
+
+    doc.setFontSize(12)
     doc.setFont("helvetica", "bold")
-    doc.setTextColor(...colors.primary)
+    doc.setTextColor(...colors.accent)
     doc.text(title, margin, y)
-    y += 20
+    y += 16
 
     autoTable(doc, {
       head: [columns],
-      body: data,
+      body,
       startY: y,
-      styles: { 
-        fontSize: 10, 
-        cellPadding: 6, 
-        textColor: colors.medium,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.5
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+        textColor: colors.textPrimary,
+        fillColor: colors.surface,
+        lineColor: colors.border,
+        lineWidth: 0.5,
       },
-      headStyles: { 
-        fontSize: 11, 
+      headStyles: {
+        fontSize: 10,
         fillColor: colors.primary,
-        textColor: colors.white,
+        textColor: [255, 255, 255],
         fontStyle: 'bold',
-        lineWidth: 0.5
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252]
+        fillColor: [30, 41, 59],
       },
       margin: { left: margin, right: margin },
       tableWidth: 'auto',
       theme: 'grid',
     })
 
-    y = (doc.lastAutoTable?.finalY ?? y) + 30
+    y = (doc.lastAutoTable?.finalY ?? y) + 18
   }
 
-  // Aircraft Information Section
+  // Aircraft Configuration
   const aircraftInfo = [
     ["Aircraft Type", data.aircraft.name],
     ["Flaps Configuration", data.params.flaps],
@@ -115,23 +146,20 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   ]
   createSection("Aircraft Configuration", aircraftInfo)
 
-  // Environmental Conditions - UPDATED WITH NEW PARAMETERS
+  // Environmental Conditions
   const environmentalInfo = [
     ["Pressure Altitude", `${data.params.pAlt.toLocaleString()} ft`],
     ["ISA Temperature", `${data.params.isa}°C`],
     ["Wind Component", `${data.params.wind >= 0 ? "Headwind" : "Tailwind"} ${Math.abs(data.params.wind)} kt`],
     ["Wind Direction", `${data.params.windDir || 180}°`],
-    [
-      "Runway Slope",
-      `${data.params.slope > 0 ? "Uphill" : data.params.slope < 0 ? "Downhill" : "Level"} ${Math.abs(data.params.slope).toFixed(1)}%`,
-    ],
+    ["Runway Slope", `${data.params.slope > 0 ? "Uphill" : data.params.slope < 0 ? "Downhill" : "Level"} ${Math.abs(data.params.slope).toFixed(1)}%`],
     ["Runway Condition", capitalize(data.params.condition)],
     ["Contaminated", data.params.contaminated ? "Yes" : "No"],
     ["QNH Pressure", `${data.params.qnh || 1013} hPa`],
   ]
   createSection("Environmental Conditions", environmentalInfo)
 
-  // NEW: Runway Infrastructure Section
+  // Runway Infrastructure
   const runwayInfrastructureInfo = [
     ["Runway Length (TORA)", `${data.params.runwayLength || 3000} m`],
     ["Clearway (CWAY)", `${data.params.clearway || 0} m`],
@@ -147,20 +175,12 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   ]
   createSection("System Configuration", systemInfo)
 
-  // V-SPEEDS SECTION
+  // V-Speeds Basic
   const getVSpeedsStatusText = (status: string) => {
     switch (status) {
       case "critical": return "CRITICAL"
       case "warning": return "ADVISORY"
       default: return "NORMAL"
-    }
-  }
-
-  const getVSpeedsStatusColor = (status: string) => {
-    switch (status) {
-      case "critical": return colors.danger
-      case "warning": return colors.warning
-      default: return colors.success
     }
   }
 
@@ -185,95 +205,91 @@ export async function exportToPDF(data: ExportData): Promise<void> {
     ["TODA (Adjusted)", `${data.results.todaAdjusted.toLocaleString()} m`],
     ["TODA Change", `${todaIncrease > 0 ? "+" : ""}${todaIncrease.toFixed(1)}%`],
   ]
-
   createSection("Performance Results", performanceInfo, ["Metric", "Value"])
 
-  // ADD V-SPEEDS VISUALIZATION
-  y = (doc.lastAutoTable?.finalY ?? y) + 20
-  
-  // V-Speeds Visual Section
-  doc.setFontSize(14)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(...colors.primary)
-  doc.text("V-Speeds Summary", margin, y)
-  y += 30
+  // V-Speeds Visual Summary
+  if (y + 100 > pageHeight - footerHeight) {
+    addDarkPage(doc)
+    y = 40
+  }
 
-  // Create a visual representation of V-speeds
+  doc.setFontSize(12)
+  doc.setFont("helvetica", "bold")
+  doc.setTextColor(...colors.accent)
+  doc.text("V-Speeds Summary", margin, y)
+  y += 16
+
   const vspeedsVisualData = [
-    ["V1", `${data.vspeeds.V1} kt`, "Decision Speed - Continue/Stop"],
-    ["VR", `${data.vspeeds.VR} kt`, "Rotation Speed - Nose Wheel Lift"],
-    ["V2", `${data.vspeeds.V2} kt`, "Safety Speed - Takeoff Climb"],
+    ["V1", `${data.vspeeds.V1} kt`, "Decision Speed"],
+    ["VR", `${data.vspeeds.VR} kt`, "Rotation Speed"],
+    ["V2", `${data.vspeeds.V2} kt`, "Safety Speed"],
   ]
 
   autoTable(doc, {
     head: [["Speed", "Value", "Description"]],
     body: vspeedsVisualData,
     startY: y,
-    styles: { 
-      fontSize: 10, 
-      cellPadding: 8,
-      textColor: colors.medium,
-      lineColor: [226, 232, 240],
-      lineWidth: 0.5
+    styles: {
+      fontSize: 9,
+      cellPadding: 5,
+      textColor: colors.textPrimary,
+      fillColor: colors.surface,
+      lineColor: colors.border,
     },
-    headStyles: { 
-      fontSize: 11, 
-      fillColor: colors.secondary,
-      textColor: colors.white,
-      fontStyle: 'bold',
-      lineWidth: 0.5
+    headStyles: {
+      fontSize: 10,
+      fillColor: colors.primary,
+      textColor: [255, 255, 255],
     },
     columnStyles: {
-      0: { fillColor: [239, 246, 255], fontStyle: 'bold', textColor: colors.primary },
-      1: { fillColor: [240, 253, 244], fontStyle: 'bold', textColor: colors.success },
-      2: { fillColor: [248, 250, 252] }
+      0: { fillColor: [30, 41, 59], fontStyle: 'bold', textColor: colors.primary },
+      1: { fillColor: [20, 83, 45], fontStyle: 'bold', textColor: colors.success },
+      2: { fillColor: [30, 41, 59] },
     },
     margin: { left: margin, right: margin },
     tableWidth: 'auto',
     theme: 'grid',
   })
 
-  y = (doc.lastAutoTable?.finalY ?? y) + 40
+  y = (doc.lastAutoTable?.finalY ?? y) + 18
 
-  // Add status indicator
+  // Status Indicator
+  const getVSpeedsStatusColor = (status: string) => {
+    switch (status) {
+      case "critical": return colors.danger
+      case "warning": return colors.warning
+      default: return colors.success
+    }
+  }
+
   doc.setFontSize(10)
   doc.setFont("helvetica", "bold")
   doc.setTextColor(...getVSpeedsStatusColor(data.vspeeds.status))
   doc.text(`V-SPEEDS STATUS: ${getVSpeedsStatusText(data.vspeeds.status)}`, margin, y)
-  
+
   if (data.vspeeds.limitingFactor) {
-    y += 15
+    y += 14
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
     doc.setTextColor(...colors.warning)
     doc.text(`Limiting Factor: ${data.vspeeds.limitingFactor}`, margin, y)
   }
 
-  // Footer
-  y += 30
-  doc.setFontSize(8)
-  doc.setFont("helvetica", "normal")
-  doc.setTextColor(100, 100, 100)
-  doc.text(`Generated: ${data.timestamp}`, margin, y + 20)
-  doc.text("Flight Core Intelligence — For planning purposes only. Verify with official performance data.", margin, y + 30)
-
-  // Save
-  doc.save(`FlightIntelligenceCore_Report_${new Date().toISOString().split("T")[0]}.pdf`)
-}
-
-function getThrustLabel(thrust: string): string {
-  switch (thrust) {
-    case "full":
-      return "Full / TOGA (100%)"
-    case "d10":
-      return "Derate 10% (TO-1 / FLEX)"
-    case "d20":
-      return "Derate 20% (TO-2 / Deep FLEX)"
-    default:
-      return thrust
+  // Footer on all pages
+  const currentPage = doc.getNumberOfPages()
+  for (let i = 1; i <= currentPage; i++) {
+    doc.setPage(i)
+    const footerY = pageHeight - 30
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...colors.textSecondary)
+    doc.text(`Generated: ${data.timestamp}`, margin, footerY)
+    doc.text(
+      "Flight Core Intelligence — For planning purposes only. Verify with official performance data.",
+      margin,
+      footerY + 10
+    )
   }
-}
 
-function capitalize(word: string): string {
-  return word.charAt(0).toUpperCase() + word.slice(1)
+  doc.save(`FlightIntelligenceCore_Report_${new Date().toISOString().split("T")[0]}.pdf`)
 }
