@@ -207,7 +207,7 @@ export function FlightConfiguration({
       id="packs-switch"
       checked={packs}
       onCheckedChange={onPacksChange}
-      className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white"
+      className="data-[state=checked]:bg-sky-500 data-[state=unchecked]:bg-zinc-700"
     />
   </div>
 

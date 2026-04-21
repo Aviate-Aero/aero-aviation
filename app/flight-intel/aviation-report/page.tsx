@@ -172,7 +172,7 @@ export default function AviationReportPage() {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(15)
     doc.setTextColor(...WHITE)
-    doc.text("Flight Intelligence Core", M, 16)
+    doc.text("Flight Core Intelligence", M, 16)
 
     doc.setFont("helvetica", "normal")
     doc.setFontSize(8)

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   LineChart,
   Line,
@@ -29,8 +30,6 @@ import {
   BarChart3,
   Activity,
   Plane,
-  ArrowUp,
-  ArrowDown,
 } from 'lucide-react';
 
 interface TrackPoint {
@@ -116,20 +115,20 @@ export default function FlightPerformanceDashboard({
 
   const phase = getFlightPhase();
   const phaseConfig = {
-    Climbing: { badge: 'bg-green-100 text-green-700 border-green-200' },
-    Descending: { badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-    Cruise: { badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-    'Low Altitude': { badge: 'bg-purple-100 text-purple-700 border-purple-200' },
-    Unknown: { badge: 'bg-gray-100 text-gray-700 border-gray-200' },
-  }[phase] || { badge: 'bg-gray-100 text-gray-700 border-gray-200' };
+    Climbing: { badge: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+    Descending: { badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+    Cruise: { badge: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+    'Low Altitude': { badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    Unknown: { badge: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' },
+  }[phase] || { badge: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30' };
 
   if (isLoading) {
     return (
-      <Card className="border-gray-200">
+      <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
         <CardContent className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-600">Loading performance data...</p>
+            <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-zinc-400">Loading performance data...</p>
           </div>
         </CardContent>
       </Card>
@@ -138,29 +137,34 @@ export default function FlightPerformanceDashboard({
 
   if (!tracks || tracks.length === 0) {
     return (
-      <Card className="border-gray-200">
+      <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
         <CardContent className="text-center py-12">
-          <Activity className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-600">No historical track data available for this flight.</p>
+          <Activity className="w-12 h-12 mx-auto text-zinc-600 mb-3" />
+          <p className="text-zinc-400">No historical track data available for this flight.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="space-y-6"
+    >
       {/* Flight header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Plane className="w-6 h-6 text-blue-600" />
+          <h1 className="text-3xl font-light text-white flex items-center gap-3">
+            <Plane className="w-6 h-6 text-sky-400" />
             {flight?.callsign || flight?.flight || 'Flight'} Performance
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-zinc-400 mt-1">
             {flight?.type || 'Aircraft'} · {flight?.reg || '—'}
           </p>
         </div>
-        <Badge className={`${phaseConfig.badge} px-4 py-2 text-sm font-semibold border`}>
+        <Badge className={`${phaseConfig.badge} px-4 py-2 text-sm font-medium border`}>
           {phase}
         </Badge>
       </div>
@@ -171,7 +175,7 @@ export default function FlightPerformanceDashboard({
           icon={<Gauge className="w-5 h-5" />}
           label="Ground Speed"
           value={tracks.length ? `${tracks[tracks.length - 1].gspeed ?? '—'} kt` : '—'}
-          color="blue"
+          color="sky"
         />
         <MetricCard
           icon={<Navigation className="w-5 h-5" />}
@@ -189,13 +193,13 @@ export default function FlightPerformanceDashboard({
           }
           label="Vertical Speed"
           value={tracks.length ? `${Math.abs(tracks[tracks.length - 1]?.vspeed ?? 0)} fpm` : '—'}
-          color={tracks[tracks.length - 1]?.vspeed && tracks[tracks.length - 1].vspeed! > 0 ? 'green' : 'amber'}
+          color={tracks[tracks.length - 1]?.vspeed && tracks[tracks.length - 1].vspeed! > 0 ? 'emerald' : 'amber'}
         />
         <MetricCard
           icon={<Clock className="w-5 h-5" />}
           label="Track Duration"
           value={stats?.duration ? `${stats.duration} min` : '—'}
-          color="blue"
+          color="sky"
         />
       </div>
 
@@ -205,34 +209,34 @@ export default function FlightPerformanceDashboard({
           icon={<BarChart3 className="w-5 h-5" />}
           label="Max Altitude"
           value={stats?.maxAlt ? `${stats.maxAlt.toLocaleString()} ft` : '—'}
-          color="blue"
+          color="sky"
         />
         <MetricCard
           icon={<Gauge className="w-5 h-5" />}
           label="Avg Speed"
           value={stats?.avgSpeed ? `${Math.round(stats.avgSpeed)} kt` : '—'}
-          color="green"
+          color="emerald"
         />
         <MetricCard
           icon={<Activity className="w-5 h-5" />}
           label="Max Climb"
           value={stats?.maxVspeed ? `${stats.maxVspeed} fpm` : '—'}
-          color="green"
+          color="emerald"
         />
         <MetricCard
           icon={<Activity className="w-5 h-5" />}
           label="Max Descent"
           value={stats?.minVspeed ? `${Math.abs(stats.minVspeed)} fpm` : '—'}
-          color="red"
+          color="rose"
         />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Altitude Chart */}
-        <Card className="border-gray-200">
+        <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">Altitude Profile</CardTitle>
+            <CardTitle className="text-base font-medium text-white">Altitude Profile</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 w-full">
@@ -240,38 +244,40 @@ export default function FlightPerformanceDashboard({
                 <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
                   <defs>
                     <linearGradient id="altGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     domain={['auto', 'auto']}
                     tickFormatter={(value) => `${value} ft`}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: '#18181b',
+                      border: '1px solid #3f3f46',
                       borderRadius: '0.5rem',
                       fontSize: '12px',
+                      color: '#e4e4e7',
                     }}
-                    labelStyle={{ color: '#111827' }}
+                    labelStyle={{ color: '#a1a1aa' }}
+                    itemStyle={{ color: '#e4e4e7' }}
                   />
                   <Area
                     type="monotone"
                     dataKey="alt"
-                    stroke="#3b82f6"
+                    stroke="#0ea5e9"
                     strokeWidth={2}
                     fill="url(#altGradient)"
                     dot={false}
-                    activeDot={{ r: 5, fill: '#3b82f6' }}
+                    activeDot={{ r: 5, fill: '#0ea5e9' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -280,33 +286,35 @@ export default function FlightPerformanceDashboard({
         </Card>
 
         {/* Speed Chart */}
-        <Card className="border-gray-200">
+        <Card className="bg-zinc-900 border-zinc-800 rounded-2xl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">Ground Speed</CardTitle>
+            <CardTitle className="text-base font-medium text-white">Ground Speed</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     domain={['auto', 'auto']}
                     tickFormatter={(value) => `${value} kt`}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: '#18181b',
+                      border: '1px solid #3f3f46',
                       borderRadius: '0.5rem',
                       fontSize: '12px',
+                      color: '#e4e4e7',
                     }}
-                    labelStyle={{ color: '#111827' }}
+                    labelStyle={{ color: '#a1a1aa' }}
+                    itemStyle={{ color: '#e4e4e7' }}
                   />
                   <Line
                     type="monotone"
@@ -323,33 +331,35 @@ export default function FlightPerformanceDashboard({
         </Card>
 
         {/* Vertical Speed Chart */}
-        <Card className="border-gray-200 lg:col-span-2">
+        <Card className="bg-zinc-900 border-zinc-800 rounded-2xl lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">Vertical Speed</CardTitle>
+            <CardTitle className="text-base font-medium text-white">Vertical Speed</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     interval="preserveStartEnd"
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    tick={{ fontSize: 12, fill: '#a1a1aa' }}
                     domain={['auto', 'auto']}
                     tickFormatter={(value) => `${value} fpm`}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#ffffff',
-                      border: '1px solid #e5e7eb',
+                      backgroundColor: '#18181b',
+                      border: '1px solid #3f3f46',
                       borderRadius: '0.5rem',
                       fontSize: '12px',
+                      color: '#e4e4e7',
                     }}
-                    labelStyle={{ color: '#111827' }}
+                    labelStyle={{ color: '#a1a1aa' }}
+                    itemStyle={{ color: '#e4e4e7' }}
                   />
                   <Line
                     type="monotone"
@@ -363,7 +373,7 @@ export default function FlightPerformanceDashboard({
                     type="monotone"
                     dataKey="vspeed"
                     fill="#f97316"
-                    fillOpacity={0.1}
+                    fillOpacity={0.15}
                     stroke="none"
                   />
                 </ComposedChart>
@@ -375,40 +385,40 @@ export default function FlightPerformanceDashboard({
 
       {/* Additional info card */}
       {flight && (
-        <Card className="border-gray-200 bg-gray-50">
+        <Card className="bg-zinc-800/50 border-zinc-700 rounded-2xl">
           <CardContent className="p-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Callsign</p>
-                <p className="text-gray-900 font-semibold">{flight.callsign || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Callsign</p>
+                <p className="text-white font-medium">{flight.callsign || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Aircraft</p>
-                <p className="text-gray-900 font-semibold">{flight.type || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Aircraft</p>
+                <p className="text-white font-medium">{flight.type || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Registration</p>
-                <p className="text-gray-900 font-semibold">{flight.reg || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Registration</p>
+                <p className="text-white font-medium">{flight.reg || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Source</p>
-                <p className="text-gray-900 font-semibold">{flight.source || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Source</p>
+                <p className="text-white font-medium">{flight.source || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Origin</p>
-                <p className="text-gray-900 font-semibold">{flight.orig_iata || flight.orig_icao || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Origin</p>
+                <p className="text-white font-medium">{flight.orig_iata || flight.orig_icao || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Destination</p>
-                <p className="text-gray-900 font-semibold">{flight.dest_iata || flight.dest_icao || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Destination</p>
+                <p className="text-white font-medium">{flight.dest_iata || flight.dest_icao || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Squawk</p>
-                <p className="text-gray-900 font-semibold">{flight.squawk || '—'}</p>
+                <p className="text-zinc-500 text-xs font-medium mb-1">Squawk</p>
+                <p className="text-white font-medium">{flight.squawk || '—'}</p>
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-medium mb-1">Last Update</p>
-                <p className="text-gray-900 font-semibold">
+                <p className="text-zinc-500 text-xs font-medium mb-1">Last Update</p>
+                <p className="text-white font-medium">
                   {stats?.lastUpdate
                     ? new Date(stats.lastUpdate).toLocaleTimeString()
                     : '—'}
@@ -418,7 +428,7 @@ export default function FlightPerformanceDashboard({
           </CardContent>
         </Card>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -431,49 +441,52 @@ function MetricCard({
   icon: React.ReactNode;
   label: string;
   value: string;
-  color: string;
+  color: 'sky' | 'purple' | 'emerald' | 'amber' | 'rose';
 }) {
   const colorConfig = {
-    blue: {
-      border: 'border-l-blue-500',
-      bg: 'bg-white',
-      icon: 'text-blue-600',
+    sky: {
+      border: 'border-l-sky-500',
+      bg: 'bg-zinc-900',
+      iconBg: 'bg-sky-500/20',
+      iconText: 'text-sky-400',
     },
     purple: {
       border: 'border-l-purple-500',
-      bg: 'bg-white',
-      icon: 'text-purple-600',
+      bg: 'bg-zinc-900',
+      iconBg: 'bg-purple-500/20',
+      iconText: 'text-purple-400',
     },
-    green: {
-      border: 'border-l-green-500',
-      bg: 'bg-white',
-      icon: 'text-green-600',
+    emerald: {
+      border: 'border-l-emerald-500',
+      bg: 'bg-zinc-900',
+      iconBg: 'bg-emerald-500/20',
+      iconText: 'text-emerald-400',
     },
     amber: {
       border: 'border-l-amber-500',
-      bg: 'bg-white',
-      icon: 'text-amber-600',
+      bg: 'bg-zinc-900',
+      iconBg: 'bg-amber-500/20',
+      iconText: 'text-amber-400',
     },
-    red: {
-      border: 'border-l-red-500',
-      bg: 'bg-white',
-      icon: 'text-red-600',
+    rose: {
+      border: 'border-l-rose-500',
+      bg: 'bg-zinc-900',
+      iconBg: 'bg-rose-500/20',
+      iconText: 'text-rose-400',
     },
-  }[color] || {
-    border: 'border-l-gray-300',
-    bg: 'bg-white',
-    icon: 'text-gray-600',
-  };
+  }[color];
 
   return (
     <div
-      className={`${colorConfig.bg} ${colorConfig.border} border-l-4 rounded-lg border border-gray-200 p-4 flex flex-col gap-2 shadow-sm hover:shadow-md transition-shadow`}
+      className={`${colorConfig.bg} ${colorConfig.border} border-l-4 rounded-xl border border-zinc-800 p-4 flex flex-col gap-2 shadow-sm hover:shadow-lg hover:shadow-sky-500/5 transition-all duration-300`}
     >
       <div className="flex items-start justify-between">
-        <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">{label}</p>
-        <div className={`${colorConfig.icon} p-1.5 rounded-md bg-gray-50`}>{icon}</div>
+        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{label}</p>
+        <div className={`${colorConfig.iconBg} p-1.5 rounded-md border border-zinc-700`}>
+          <div className={colorConfig.iconText}>{icon}</div>
+        </div>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-2xl font-bold text-white">{value}</p>
     </div>
   );
 }

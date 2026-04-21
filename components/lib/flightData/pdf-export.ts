@@ -62,7 +62,7 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   doc.setFontSize(20)
   doc.setFont("helvetica", "bold")
   doc.setTextColor(...colors.white)
-  doc.text("Aero Data Pro — Performance Report", margin, 50)
+  doc.text("Flight Core Intelligence — Performance Report", margin, 50)
   
   y = 100
 
@@ -255,7 +255,7 @@ export async function exportToPDF(data: ExportData): Promise<void> {
   doc.setFont("helvetica", "normal")
   doc.setTextColor(100, 100, 100)
   doc.text(`Generated: ${data.timestamp}`, margin, y + 20)
-  doc.text("Aero Data Pro — For planning purposes only. Verify with official performance data.", margin, y + 30)
+  doc.text("Flight Core Intelligence — For planning purposes only. Verify with official performance data.", margin, y + 30)
 
   // Save
   doc.save(`FlightIntelligenceCore_Report_${new Date().toISOString().split("T")[0]}.pdf`)

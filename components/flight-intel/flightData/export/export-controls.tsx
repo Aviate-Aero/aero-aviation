@@ -100,7 +100,7 @@ export function ExportControls({ aircraft, params, results, vspeeds }: ExportCon
       timestamp: new Date().toLocaleString(),
     }
 
-    const shareText = `Aero Data Pro Performance Report
+    const shareText = `Flight Core Intelligence Performance Report
 Aircraft: ${shareData.aircraft}
 TOW: ${shareData.tow.toLocaleString()} kg
 Condition: ${shareData.condition}
@@ -112,7 +112,7 @@ Generated: ${shareData.timestamp}`
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Aero Data Pro Performance Report",
+          title: "Flight Core Intelligence Performance Report",
           text: shareText,
         })
       } catch {

@@ -28,7 +28,7 @@ export function Header({ onExportPDF }: HeaderProps) {
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <span className="text-primary-foreground font-bold text-sm">AP</span>
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Aero Data Pro</h1>
+          <h1 className="text-xl font-semibold text-foreground">Flight Core Intelligence</h1>
         </div>
         <div className="text-sm text-muted-foreground">Professional Aviation Performance Calculator</div>
       </div>
