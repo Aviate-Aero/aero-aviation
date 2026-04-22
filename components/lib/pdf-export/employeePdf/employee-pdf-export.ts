@@ -10,6 +10,7 @@ interface EmployeeForPDF {
   department: string
   role: string
   joining_date: string | null
+  date_of_birth: string | null
   status: string
   salary: number | null
   salary_currency: string | null
@@ -46,7 +47,7 @@ async function ensureRasterImage(base64: string): Promise<string> {
   }
 
   if (typeof window === 'undefined') {
-    // Server-side fallback – cannot convert, return as is (jsPDF may still fail)
+    // Server‑side fallback – cannot convert, return as is (jsPDF may still fail)
     return base64
   }
 
@@ -75,7 +76,7 @@ async function ensureRasterImage(base64: string): Promise<string> {
 
 /**
  * Draws the image through a canvas so the browser normalises EXIF orientation.
- * This fixes the "tilted photo" issue with phone-taken pictures.
+ * This fixes the "tilted photo" issue with phone‑taken pictures.
  */
 async function fixOrientation(base64: string): Promise<string> {
   if (typeof window === 'undefined') return base64
@@ -183,7 +184,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   doc.setTextColor(...white)
-  doc.text('Flight Intelligence Core Human Resource Management', M, 18)
+  doc.text('Flight Core Intelligence Human Resource Management', M, 18)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(160, 185, 225)
@@ -241,16 +242,65 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setTextColor(...dark)
   doc.text(employee.full_name, nX, pCardY + 16)
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...mid)
-  doc.text(employee.role, nX, pCardY + 24)
+  const maxRoleWidth = IW - (nX - M) - 4   // available width for role text
 
+  const fitText = (
+    text: string,
+    maxWidth: number,
+    initialFontSize: number,
+    minFontSize: number = 6
+  ): { fontSize: number; lines: string[] } => {
+    doc.setFont('helvetica', 'normal')
+    let fontSize = initialFontSize
+    doc.setFontSize(fontSize)
+    let textWidth = doc.getTextWidth(text)
+
+    // Reduce font size until it fits or we hit the minimum
+    while (textWidth > maxWidth && fontSize > minFontSize) {
+      fontSize -= 0.5
+      doc.setFontSize(fontSize)
+      textWidth = doc.getTextWidth(text)
+    }
+
+    // If still too wide, split into two lines by wrapping at spaces
+    if (textWidth > maxWidth) {
+      const words = text.split(' ')
+      let line1 = ''
+      let line2 = ''
+      for (const word of words) {
+        const testLine = line1 ? `${line1} ${word}` : word
+        if (doc.getTextWidth(testLine) <= maxWidth) {
+          line1 = testLine
+        } else {
+          line2 = line2 ? `${line2} ${word}` : word
+        }
+      }
+      return { fontSize, lines: [line1, line2 || ''] }
+    }
+
+    return { fontSize, lines: [text] }
+  }
+
+  const roleResult = fitText(employee.role, maxRoleWidth, 9.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(roleResult.fontSize)
+  doc.setTextColor(...mid)
+
+  if (roleResult.lines.length === 1) {
+    doc.text(roleResult.lines[0], nX, pCardY + 24)
+  } else {
+    // Two lines – adjust vertical positions to avoid overlap
+    doc.text(roleResult.lines[0], nX, pCardY + 22)
+    doc.text(roleResult.lines[1], nX, pCardY + 29)
+  }
+
+  // Department (unchanged)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...blue)
   doc.text(employee.department, nX, pCardY + 32)
 
+  // Employee ID badge
   doc.setFillColor(...navy)
   doc.roundedRect(nX, pCardY + 47, 54, 14, 2, 2, 'F')
   doc.setFont('helvetica', 'normal')
@@ -328,9 +378,14 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   const joinDate = employee.joining_date
     ? new Date(employee.joining_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '—'
+
+  const dobDate = employee.date_of_birth
+    ? new Date(employee.date_of_birth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '—'
+
   section('Employment Details', [
     ['Department', employee.department,  'Job Title', employee.role],
-    ['Joining Date', joinDate],
+    ['Joining Date', joinDate, 'Date of Birth', dobDate],
   ])
 
   if (employee.salary != null && employee.salary_currency) {
@@ -355,7 +410,6 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6)
   doc.setTextColor(...muted)
-  doc.text('This document is generated from Flight Intelligence Core and is confidential.', W / 2, y + 27, { align: 'center' })
 
   doc.setFillColor(...navy)
   doc.rect(0, 285, W, 12, 'F')
@@ -364,7 +418,7 @@ export async function downloadEmployeePDF(employee: EmployeeForPDF): Promise<voi
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(6.5)
   doc.setTextColor(160, 185, 225)
-  doc.text('Flight Intelligence Core  |  Flight Intelligence Core', M, 292.5)
+  doc.text('Flight Core Intelligence', M, 292.5)
   doc.text('Confidential — Internal Use Only', W / 2, 292.5, { align: 'center' })
   doc.text('Page 1 of 1', W - M, 292.5, { align: 'right' })
 

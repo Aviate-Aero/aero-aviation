@@ -51,6 +51,7 @@ interface Employee {
   department: string
   role: string
   joining_date: string | null
+  date_of_birth: string | null        // <-- NEW
   status: EmployeeStatus
   salary: number | null
   salary_currency: SalaryCurrency | null
@@ -103,6 +104,7 @@ const EMPTY_FORM = {
   department: DEPARTMENTS[0],
   role: "",
   joining_date: "",
+  date_of_birth: "",      // <-- NEW
   status: "active" as EmployeeStatus,
   salary: "",
   salary_currency: "PKR" as SalaryCurrency,
@@ -198,6 +200,7 @@ export default function EmployeeManagerPage() {
             department: form.department,
             role: form.role.trim(),
             joining_date: form.joining_date || null,
+            date_of_birth: form.date_of_birth || null,   // <-- NEW
             status: form.status,
             salary: form.salary ? parseFloat(form.salary) : null,
             salary_currency: form.salary ? form.salary_currency : null,
@@ -462,6 +465,14 @@ export default function EmployeeManagerPage() {
                           className="bg-black/40 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/50"
                         />
                       </FormField>
+                      <FormField label="Date of Birth">
+                        <Input
+                          type="date"
+                          value={form.date_of_birth}
+                          onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+                          className="bg-black/40 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/50"
+                        />
+                      </FormField>
                       <FormField label="Email">
                         <Input
                           type="email"
@@ -621,6 +632,7 @@ function EditModal({
     department: employee.department,
     role: employee.role,
     joining_date: employee.joining_date ?? "",
+    date_of_birth: employee.date_of_birth ?? "",   // <-- NEW
     status: employee.status,
     salary: employee.salary != null ? String(employee.salary) : "",
     salary_currency: (employee.salary_currency ?? "PKR") as SalaryCurrency,
@@ -672,6 +684,7 @@ function EditModal({
         department: form.department,
         role: form.role.trim(),
         joining_date: form.joining_date || null,
+        date_of_birth: form.date_of_birth || null,   // <-- NEW
         status: form.status,
         salary: form.salary ? parseFloat(form.salary) : null,
         salary_currency: form.salary ? form.salary_currency : null,
@@ -845,6 +858,14 @@ function EditModal({
                 className="bg-black/40 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/50"
               />
             </FormField>
+            <FormField label="Date of Birth">
+              <Input
+                type="date"
+                value={form.date_of_birth}
+                onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+                className="bg-black/40 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/50"
+              />
+            </FormField>
             <FormField label="Email">
               <Input
                 type="email"
@@ -917,7 +938,7 @@ function EditModal({
   )
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Sub‑components ───────────────────────────────────────────────────────────
 
 function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
@@ -1067,6 +1088,19 @@ function EmployeeCard({
             <span>
               Joined{" "}
               {new Date(emp.joining_date).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+        )}
+        {emp.date_of_birth && (
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <Calendar className="w-3 h-3 shrink-0 text-zinc-600" />
+            <span>
+              Born{" "}
+              {new Date(emp.date_of_birth).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
