@@ -197,7 +197,7 @@ export default function AircraftManager() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button
-                onClick={() => router.push('/aerodata/admin/welcome')}
+                onClick={() => router.push('/flight-intel/admin')}
                 variant="outline"
                 className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
               >

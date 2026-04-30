@@ -179,7 +179,7 @@ export default function AdminEmailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push('/aerodata/admin/welcome')}
+                onClick={() => router.push('/')}
                 className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
