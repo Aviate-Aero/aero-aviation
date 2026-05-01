@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
+// ── Email transporter ───────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.hostinger.com',
   port: parseInt(process.env.SMTP_PORT || '465'),
@@ -11,17 +12,16 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+// ── HTML builder (unchanged) ────────────────────────────────────────────
 function buildHtml(body: string, subject: string): string {
-  // Escape HTML characters and convert newlines to <br>
   const escaped = body
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
+    .replace(/\n/g, '<br>')
 
-  // Absolute URL for the logo – must be accessible by email clients
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aeroaviation.me';
-  const logoUrl = `${baseUrl}/logos/officialLogo.svg`;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://aeroaviation.me'
+  const logoUrl = `${baseUrl}/logos/officialLogo.svg`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -145,22 +145,68 @@ function buildHtml(body: string, subject: string): string {
     </table>
   </center>
 </body>
-</html>`;
+</html>`
 }
 
+// ── POST handler ────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const { to, cc, subject, body } = await req.json() as {
-      to: string[]
-      cc?: string[]
-      subject: string
-      body: string
-    }
+    // Parse the multipart/form-data
+    const formData = await req.formData()
 
-    if (!to?.length || !subject?.trim() || !body?.trim()) {
+    // Extract string fields (to, cc were sent as JSON strings)
+    const toRaw = formData.get('to')
+    const ccRaw = formData.get('cc')
+    const subjectRaw = formData.get('subject')
+    const bodyRaw = formData.get('body')
+
+    let to: string[] = []
+    let cc: string[] | undefined = undefined
+    let subject = ''
+    let body = ''
+
+    // Parse the JSON-encoded to field
+    if (typeof toRaw === 'string') {
+      try {
+        to = JSON.parse(toRaw)
+      } catch {
+        return NextResponse.json({ error: 'Invalid "to" field format' }, { status: 400 })
+      }
+    }
+    if (typeof ccRaw === 'string') {
+      try {
+        cc = JSON.parse(ccRaw)
+      } catch {
+        return NextResponse.json({ error: 'Invalid "cc" field format' }, { status: 400 })
+      }
+    }
+    if (typeof subjectRaw === 'string') subject = subjectRaw.trim()
+    if (typeof bodyRaw === 'string') body = bodyRaw.trim()
+
+    if (!to.length || !subject || !body) {
       return NextResponse.json({ error: 'to, subject, and body are required' }, { status: 400 })
     }
 
+    // Gather attachments
+    const attachmentFiles = formData.getAll('attachments') as File[]
+    const nodemailerAttachments: {
+      filename: string
+      content: Buffer
+      contentType?: string
+    }[] = []
+
+    for (const file of attachmentFiles) {
+      if (file.size > 0) {
+        const buffer = Buffer.from(await file.arrayBuffer())
+        nodemailerAttachments.push({
+          filename: file.name,
+          content: buffer,
+          contentType: file.type || undefined,
+        })
+      }
+    }
+
+    // Send mail
     const fromAddress = process.env.SMTP_USER
     const fromName    = process.env.SMTP_FROM_NAME || 'Aero Aviation'
 
@@ -170,6 +216,7 @@ export async function POST(req: NextRequest) {
       cc:      cc?.length ? cc.join(', ') : undefined,
       subject,
       html:    buildHtml(body, subject),
+      attachments: nodemailerAttachments.length ? nodemailerAttachments : undefined,
     })
 
     return NextResponse.json({ success: true })

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Mail, Send, Users, X, ChevronDown, ChevronUp,
   ArrowLeft, CheckCircle, AlertCircle, Loader2, Plus,
+  Paperclip, FileText, Trash2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { createSupabaseClient } from '@/components/lib/supabase/supbase-client'
@@ -48,6 +49,10 @@ export default function AdminEmailPage() {
   // Compose
   const [subject, setSubject]     = useState('')
   const [body, setBody]           = useState('')
+
+  // Attachments
+  const [attachments, setAttachments] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Employees
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -121,6 +126,27 @@ export default function AdminEmailPage() {
      e.department.toLowerCase().includes(pickerSearch.toLowerCase()))
   )
 
+  // ── Attachment handlers ──────────────────────────────────────────────────────
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || [])
+    const totalSize = [...attachments, ...selectedFiles].reduce((sum, f) => sum + f.size, 0)
+    const maxTotalSize = 10 * 1024 * 1024 // 10 MB total limit
+
+    if (totalSize > maxTotalSize) {
+      setErrorMsg('Total attachment size cannot exceed 10 MB.')
+      setSendState('error')
+      return
+    }
+
+    setAttachments(prev => [...prev, ...selectedFiles])
+    if (fileInputRef.current) fileInputRef.current.value = '' // allow re-selecting same file
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
   // ── Send ─────────────────────────────────────────────────────────────────────
 
   const handleSend = async () => {
@@ -138,15 +164,19 @@ export default function AdminEmailPage() {
     setErrorMsg('')
 
     try {
+      const formData = new FormData()
+      formData.append('to', JSON.stringify([...new Set(finalTo)]))
+      if (ccList.length) formData.append('cc', JSON.stringify(ccList))
+      formData.append('subject', subject.trim())
+      formData.append('body', body.trim())
+
+      attachments.forEach(file => {
+        formData.append('attachments', file)
+      })
+
       const res = await fetch('/api/email/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: [...new Set(finalTo)],
-          cc: ccList.length ? ccList : undefined,
-          subject: subject.trim(),
-          body: body.trim(),
-        }),
+        body: formData,
       })
 
       const json = await res.json()
@@ -156,7 +186,7 @@ export default function AdminEmailPage() {
       setTimeout(() => {
         setSendState('idle')
         setToList([]); setCcList([]); setToInput(''); setCcInput('')
-        setSubject(''); setBody(''); setPreview(false)
+        setSubject(''); setBody(''); setAttachments([]); setPreview(false)
       }, 3000)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to send email')
@@ -350,6 +380,54 @@ export default function AdminEmailPage() {
               />
             </div>
 
+            {/* Attachments */}
+            <div className="px-5 py-3 border-b border-zinc-800 space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-400 hover:text-sky-400 border border-zinc-700 hover:border-sky-500/50 rounded-lg transition-colors"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  Attach files
+                </button>
+                <span className="text-xs text-zinc-600">
+                  (Max 10 MB total)
+                </span>
+              </div>
+
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((file, idx) => (
+                    <span
+                      key={`${file.name}-${idx}`}
+                      className="inline-flex items-center gap-2 px-2.5 py-1 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-300 group"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-zinc-500" />
+                      <span className="max-w-[120px] truncate">{file.name}</span>
+                      <span className="text-zinc-600">
+                        ({(file.size / 1024).toFixed(0)} KB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(idx)}
+                        className="text-zinc-600 hover:text-rose-400 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Body */}
             {preview ? (
               <div className="p-6">
@@ -363,6 +441,12 @@ export default function AdminEmailPage() {
                   <div className="bg-white px-8 py-6">
                     {subject && <p className="text-xs text-zinc-400 mb-4 pb-4 border-b border-zinc-200">{subject}</p>}
                     <p className="text-zinc-800 text-sm leading-relaxed whitespace-pre-wrap">{body || 'Your message will appear here…'}</p>
+                    {attachments.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-zinc-200 flex items-center gap-2 text-xs text-zinc-500">
+                        <Paperclip className="w-3.5 h-3.5" />
+                        {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
                   </div>
                   <div className="bg-zinc-50 px-8 py-4 text-center space-y-1">
                     <p className="text-zinc-400 text-xs">Aero Aviation</p>
@@ -383,10 +467,13 @@ export default function AdminEmailPage() {
           </div>
 
           {/* Recipient summary */}
-          {(toList.length > 0 || ccList.length > 0) && (
+          {(toList.length > 0 || ccList.length > 0 || attachments.length > 0) && (
             <p className="text-xs text-zinc-500 px-1">
               Sending to <span className="text-zinc-300">{toList.length}</span> recipient{toList.length !== 1 ? 's' : ''}
               {ccList.length > 0 && <>, CC <span className="text-zinc-300">{ccList.length}</span></>}
+              {attachments.length > 0 && (
+                <>, <span className="text-zinc-300">{attachments.length}</span> attachment{attachments.length !== 1 ? 's' : ''}</>
+              )}
             </p>
           )}
         </motion.div>
