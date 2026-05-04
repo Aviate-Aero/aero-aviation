@@ -82,6 +82,18 @@ export default function AppSelector() {
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/aviation-report",
     },
+    {
+      title: "Arrivals & Departures",
+      description: "Check fligh arrivals and departures of any airport worldwide",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/flight-destinations",
+    },
+    {
+      title: "Airport Information",
+      description: "Detailed information of any airport all over the globe",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/airport-info",
+    },
   ]
 
   const containerVariants = {
@@ -96,7 +108,7 @@ export default function AppSelector() {
   }
 
   return (
-    <main className="relative bg-black text-white overflow-hidden">
+    <main className="relative bg-black text-white overflow-hidden mt-20">
 
       <section className="relative z-20 min-h-screen flex flex-col justify-center py-24 px-4">
         <div className="container mx-auto max-w-7xl">
