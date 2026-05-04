@@ -435,7 +435,7 @@ export default function AdminEmailPage() {
                 <div className="rounded-xl overflow-hidden border border-zinc-700 max-w-xl mx-auto">
                   <div className="bg-[#08204a] px-8 py-6 text-center">
                     <p className="text-white font-bold text-lg tracking-wide">Aero Aviation</p>
-                    <p className="text-[#a0b9e1] text-xs tracking-widest mt-1">An Aviation Company ;</p>
+                    <p className="text-[#a0b9e1] text-xs tracking-widest mt-1">Aviate Pro ME LLC Group</p>
                   </div>
                   <div className="bg-[#1a56af] h-0.5" />
                   <div className="bg-white px-8 py-6">

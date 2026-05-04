@@ -10,7 +10,7 @@ const footerLinks = {
   ],
   company: [
     { label: "About", href: "#" },
-    { label: "Blog", href: "#" },
+    { label: "HR Policy", href: "/hr-policy" },
     { label: "Careers", href: "#" },
     { label: "Contact", href: "/contact" },
   ],

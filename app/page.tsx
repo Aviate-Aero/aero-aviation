@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/buttons/Standard"
-import { Starfield } from "@/components/ui/starfield/Standard"
 import { FeaturesSection } from "@/components/Sections/features/Standard"
 import { CircleArrowRight } from "lucide-react"
 

@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-// ── HTML builder (unchanged) ────────────────────────────────────────────
+// ── HTML builder (updated) ──────────────────────────────────────────────
 function buildHtml(body: string, subject: string): string {
   const escaped = body
     .replace(/&/g, '&amp;')
@@ -39,7 +39,7 @@ function buildHtml(body: string, subject: string): string {
           <!-- Main Card -->
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;box-shadow:0 4px 12px rgba(0,0,0,0.04);overflow:hidden;" role="presentation">
             
-            <!-- Header: Deep blue background makes white logo text stand out -->
+            <!-- Header: Deep blue background with logo and group name -->
             <tr>
               <td style="background:#0369a1;padding:32px 32px 24px;text-align:center;">
                 <img 
@@ -48,6 +48,10 @@ function buildHtml(body: string, subject: string): string {
                   style="max-width:200px;height:auto;display:block;margin:0 auto;border:0;"
                   width="200"
                 />
+                <!-- Added group name below logo -->
+                <p style="margin:12px 0 0;font-size:14px;color:#ffffff;font-weight:500;letter-spacing:0.5px;">
+                  Aviate Pro ME LLC Group
+                </p>
               </td>
             </tr>
             
