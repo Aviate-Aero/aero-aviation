@@ -94,6 +94,12 @@ export default function AppSelector() {
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/airport-info",
     },
+    {
+      title: "Flight Status",
+      description: "Detailed information of any airport all over the globe",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/flight-status",
+    },
   ]
 
   const containerVariants = {
