@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import {
   CircleArrowRight,
   Loader2,
@@ -19,7 +20,6 @@ import {
   Navigation,
   ImageIcon,
   Route,
-  Activity,
   Luggage,
   DoorOpen,
   MonitorCheck,
@@ -35,7 +35,17 @@ import {
   CardTitle,
 } from "@/components/card/Standard"
 
-import FlightMap from "@/components/flight-intel/flight-tracker/flightMaps/Standard"
+const FlightMap = dynamic(
+  () => import("@/components/flight-intel/flight-tracker/flightMaps/Standard"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[500px] rounded-xl border border-zinc-800 bg-black/30 flex items-center justify-center text-zinc-400">
+        Loading map...
+      </div>
+    ),
+  }
+)
 
 type SearchBy = "number" | "callsign" | "reg" | "icao24"
 type DateLocalRole = "Both" | "Departure" | "Arrival"
@@ -52,6 +62,18 @@ export default function FlightStatusPage() {
   const [flights, setFlights] = useState<any[]>([])
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
+  const [utcTime, setUtcTime] = useState("")
+
+  useEffect(() => {
+    const updateTime = () => {
+      setUtcTime(new Date().toISOString().slice(11, 19))
+    }
+
+    updateTime()
+    const interval = setInterval(updateTime, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -129,7 +151,7 @@ export default function FlightStatusPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-zinc-500 font-mono">UTC</span>
               <span className="text-sm text-sky-400 font-mono tabular-nums">
-                {new Date().toISOString().slice(11, 19)}
+                {utcTime || "--:--:--"}
               </span>
             </div>
           </div>
@@ -524,7 +546,10 @@ function FlightDetail({
       </div>
 
       {/* Timing */}
-      <SectionCard title="Timing Information" icon={<Clock className="w-5 h-5" />}>
+      <SectionCard
+        title="Timing Information"
+        icon={<Clock className="w-5 h-5" />}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <TimingBlock
             title="Departure Scheduled"
@@ -579,7 +604,7 @@ function FlightDetail({
           </div>
         </SectionCard>
 
-        <SectionCard title="Aircraft" icon={<Wifi className="w-10 h-10" />}>
+        <SectionCard title="Aircraft" icon={<Wifi className="w-5 h-5" />}>
           <div className="grid grid-cols-1 gap-8">
             <InfoBox label="Registration" value={flight?.aircraft?.reg} />
             <InfoBox label="Mode S" value={flight?.aircraft?.modeS} />
@@ -615,7 +640,10 @@ function FlightDetail({
 
       {/* Flight Plan */}
       {flight?.flightPlan && (
-        <SectionCard title="Flight Plan" icon={<RadioTower className="w-5 h-5" />}>
+        <SectionCard
+          title="Flight Plan"
+          icon={<RadioTower className="w-5 h-5" />}
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <InfoBox
               label="Flight Rules"
@@ -663,7 +691,10 @@ function FlightDetail({
 
       {/* Live Location Details */}
       {withLocation && flight?.location && (
-        <SectionCard title="Live Location Details" icon={<MapPin className="w-5 h-5" />}>
+        <SectionCard
+          title="Live Location Details"
+          icon={<MapPin className="w-5 h-5" />}
+        >
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <InfoBox label="Latitude" value={flight?.location?.lat} />
             <InfoBox label="Longitude" value={flight?.location?.lon} />
@@ -713,9 +744,18 @@ function FlightDetail({
                   label="Track Rad"
                   value={flight?.location?.trueTrack?.rad}
                 />
-                <SmallValue label="hPa" value={flight?.location?.pressure?.hPa} />
-                <SmallValue label="inHg" value={flight?.location?.pressure?.inHg} />
-                <SmallValue label="mmHg" value={flight?.location?.pressure?.mmHg} />
+                <SmallValue
+                  label="hPa"
+                  value={flight?.location?.pressure?.hPa}
+                />
+                <SmallValue
+                  label="inHg"
+                  value={flight?.location?.pressure?.inHg}
+                />
+                <SmallValue
+                  label="mmHg"
+                  value={flight?.location?.pressure?.mmHg}
+                />
               </div>
             </div>
           </div>
@@ -867,13 +907,7 @@ function MiniDetail({
   )
 }
 
-function InfoBox({
-  label,
-  value,
-}: {
-  label: string
-  value: any
-}) {
+function InfoBox({ label, value }: { label: string; value: any }) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-black/30 p-4">
       <p className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
@@ -886,13 +920,7 @@ function InfoBox({
   )
 }
 
-function SmallValue({
-  label,
-  value,
-}: {
-  label: string
-  value: any
-}) {
+function SmallValue({ label, value }: { label: string; value: any }) {
   return (
     <div>
       <p className="text-xs text-zinc-500 mb-1">{label}</p>
