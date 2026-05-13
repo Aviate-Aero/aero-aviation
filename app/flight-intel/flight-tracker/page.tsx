@@ -68,7 +68,6 @@ export default function FlightTrackerPage() {
   className="relative z-20 mx-auto max-w-7xl px-6 lg:px-12 pt-28"
 >
   <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50">
-    {/* 左侧：闪烁绿灯 + 系统状态文字 */}
     <div className="flex items-center gap-3">
       <div className="relative flex items-center justify-center">
         <span className="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping" />
@@ -79,7 +78,6 @@ export default function FlightTrackerPage() {
       </span>
     </div>
 
-    {/* 右侧：当前时间 + 返回仪表盘按钮 */}
     <div className="flex items-center gap-4">
       <div className="flex items-center gap-2">
         <span className="text-xs text-zinc-500 font-mono">UTC</span>

@@ -31,18 +31,26 @@ function AppCard({ title, description, icon, route, delay }: AppCardProps) {
         onClick={() => router.push(route)}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-transparent to-transparent group-hover:from-sky-500/5 group-hover:to-transparent transition-all duration-500" />
+
         <CardHeader className="relative z-10 pb-4">
           <motion.div
             className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-sky-500/10 border border-sky-500/30 group-hover:scale-105 group-hover:bg-sky-500/20 transition-all duration-300"
             whileHover={{ rotate: 8 }}
           >
-            <div className="text-sky-400 group-hover:text-sky-300 transition-colors">{icon}</div>
+            <div className="text-sky-400 group-hover:text-sky-300 transition-colors">
+              {icon}
+            </div>
           </motion.div>
-          <CardTitle className="text-xl font-light text-white">{title}</CardTitle>
+
+          <CardTitle className="text-xl font-light text-white">
+            {title}
+          </CardTitle>
+
           <CardDescription className="text-zinc-400 text-sm leading-relaxed">
             {description}
           </CardDescription>
         </CardHeader>
+
         <CardContent className="relative z-10 pt-0 mt-auto">
           <div className="flex items-center text-sm font-medium text-sky-400 group-hover:text-sky-300 group-hover:gap-2 transition-all duration-300">
             <span>Launch App</span>
@@ -55,18 +63,20 @@ function AppCard({ title, description, icon, route, delay }: AppCardProps) {
 }
 
 export default function AppSelector() {
-  useAuth() // keep context alive for auth
+  useAuth()
 
   const apps = [
     {
       title: "Flight Performance",
-      description: "Compute optimal aircraft performance, generate trim sheets, and determine precise fuel loads",
+      description:
+        "Compute optimal aircraft performance, generate trim sheets, and determine precise fuel loads",
       icon: <Database className="h-6 w-6" />,
       route: "/flight-intel/flightdata",
     },
     {
       title: "Dispatch",
-      description: "Review and manage flight plans, coordinate operations, and ensure regulatory compliance",
+      description:
+        "Review and manage flight plans, coordinate operations, and ensure regulatory compliance",
       icon: <FileText className="h-6 w-6" />,
       route: "/flight-intel/dispatch",
     },
@@ -78,13 +88,14 @@ export default function AppSelector() {
     },
     {
       title: "Aviation Intelligence",
-      description: "Generate AI-powered aviation reports with real-time web search — incidents, NOTAMs, airspace closures, and more.",
+      description:
+        "Generate AI-powered aviation reports with real-time web search — incidents, NOTAMs, airspace closures, and more.",
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/aviation-report",
     },
     {
       title: "Arrivals & Departures",
-      description: "Check fligh arrivals and departures of any airport worldwide",
+      description: "Check flight arrivals and departures of any airport worldwide",
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/flight-destinations",
     },
@@ -96,9 +107,15 @@ export default function AppSelector() {
     },
     {
       title: "Flight Status",
-      description: "Detailed information of any airport all over the globe",
+      description: "Detailed flight status information for airline operations",
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/flight-status",
+    },
+    {
+      title: "Airline Fleet",
+      description: "Check the aircraft inventory of any airline",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/airline-fleet",
     },
   ]
 
@@ -115,7 +132,6 @@ export default function AppSelector() {
 
   return (
     <main className="relative bg-black text-white overflow-hidden mt-20">
-
       <section className="relative z-20 min-h-screen flex flex-col justify-center py-24 px-4">
         <div className="container mx-auto max-w-7xl">
           {/* Header */}
@@ -128,6 +144,7 @@ export default function AppSelector() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-zinc-100 mb-4">
               Flight Operations Management
             </h1>
+
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
               Select an application to begin managing your aviation operations
             </p>
@@ -150,6 +167,38 @@ export default function AppSelector() {
                 delay={index * 0.1}
               />
             ))}
+          </motion.div>
+
+          {/* Powered By Footer */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1 }}
+            className="relative z-10 mt-12 rounded-2xl border border-zinc-800/50 bg-zinc-900/40 px-5 py-4 backdrop-blur-xl"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-mono uppercase tracking-wider text-white">
+                Powered by
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
+                  FlightRadar API
+                </span>
+
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
+                  AeroDataBox API
+                </span>
+
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
+                  Skylink API
+                </span>
+
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
+                  Anthropic
+                </span>
+              </div>
+            </div>
           </motion.div>
 
           {/* Decorative element */}

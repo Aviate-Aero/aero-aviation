@@ -104,7 +104,6 @@ export default function AirportRoutesPage() {
   const [error, setError] = useState("");
 
   const currentBoardLabel = useMemo(() => {
-    if (viewMode === "routes") return "POPULAR ROUTES";
     if (direction === "Arrival") return "ARRIVALS";
     if (direction === "Departure") return "DEPARTURES";
     return "ARRIVALS / DEPARTURES";
@@ -513,18 +512,6 @@ export default function AirportRoutesPage() {
                 }`}
               >
                 Arrivals / Departures
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setViewMode("routes")}
-                className={`rounded-full px-5 py-3 text-sm transition-all duration-300 ${
-                  viewMode === "routes"
-                    ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-                    : "border border-white/10 bg-black/40 text-zinc-300 hover:border-sky-400/40 hover:text-white"
-                }`}
-              >
-                Popular Routes
               </button>
             </div>
 
