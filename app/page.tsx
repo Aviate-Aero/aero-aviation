@@ -16,15 +16,21 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative z-20 min-h-[78vh] flex flex-col justify-center">
         <div className="container mx-auto px-6 lg:px-12">
-          <div className="max-w-3xl">
-            <motion.h1
-              className="text-6xl md:text-7xl lg:text-8xl font-light mb-8 leading-[1] text-balance"
-              initial={{ opacity: 0, y: 32 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.75, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              Aero Aviation
-            </motion.h1>
+          <div className="max-w-3xl mt-8">
+           <motion.h1
+            className="mb-8 leading-[1] text-balance"
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.75, ease: [0.25, 0.1, 0.25, 1] }}
+           >
+           <span className="block whitespace-nowrap text-5xl md:text-7xl lg:text-8xl font-light">
+            Aerospace Aviation
+           </span>
+
+           <span className="mt-3 block text-xl md:text-2xl lg:text-3xl font-light tracking-[0.35em] text-sky-400 uppercase">
+            ME LTD
+           </span>
+          </motion.h1>
             <motion.p
               className="text-lg md:text-xl text-zinc-400 mb-12"
               initial={{ opacity: 0, y: 24 }}

@@ -117,6 +117,18 @@ export default function AppSelector() {
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/airline-fleet",
     },
+    {
+      title: "Airport Distance",
+      description: "Check the aprrox distance between two airports",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/airport-distance",
+    },
+    {
+      title: "Airport Delays",
+      description: "Check the airport flight delays, present or historical",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/airport-delays",
+    },
   ]
 
   const containerVariants = {
