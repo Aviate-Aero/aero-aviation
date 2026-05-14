@@ -129,6 +129,12 @@ export default function AppSelector() {
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/airport-delays",
     },
+    {
+      title: "Airport Runways",
+      description: "Check the information related to airport runways",
+      icon: <Bot className="h-6 w-6" />,
+      route: "/flight-intel/airport-runways",
+    },
   ]
 
   const containerVariants = {

@@ -73,16 +73,15 @@ type FleetResponse = {
 
 export default function AirlineFleetPage() {
   const [airlineCode, setAirlineCode] = useState("KLM");
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
-  const [withRegistrations, setWithRegistrations] = useState(false);
 
   const [fleetData, setFleetData] = useState<FleetResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const getSafePageSize = () => {
-    return Math.min(Math.max(Number(pageSize) || 20, 1), 100);
+    return Math.min(Math.max(Number(pageSize) || 10, 1), 10);
   };
 
   const getSafePageOffset = (offset: number) => {
@@ -119,8 +118,7 @@ export default function AirlineFleetPage() {
         `/api/aerodatabox/airline-fleet` +
         `?airlineCode=${encodeURIComponent(cleanAirlineCode)}` +
         `&pageSize=${currentSafePageSize}` +
-        `&pageOffset=${currentSafePageOffset}` +
-        `&withRegistrations=${withRegistrations}`;
+        `&pageOffset=${currentSafePageOffset}`;
 
       const response = await fetch(url);
       const data = await parseApiResponse(response);
@@ -176,7 +174,7 @@ export default function AirlineFleetPage() {
           </CardHeader>
 
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Airline Code */}
               <div className="md:col-span-1">
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
@@ -204,14 +202,19 @@ export default function AirlineFleetPage() {
               <div className="md:col-span-1">
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
                   Results Per Page
+                  <span className="ml-2 text-xs text-zinc-500">Max 10</span>
                 </label>
 
                 <Input
                   type="number"
                   min={1}
-                  max={100}
+                  max={10}
                   value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    const safeValue = Math.min(Math.max(value || 10, 1), 10);
+                    setPageSize(safeValue);
+                  }}
                   className="border-zinc-700 bg-black/40 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/30 rounded-full h-[42px] text-base"
                 />
               </div>
@@ -229,22 +232,6 @@ export default function AirlineFleetPage() {
                   onChange={(e) => setPageOffset(Number(e.target.value))}
                   className="border-zinc-700 bg-black/40 text-white placeholder:text-zinc-500 focus:border-sky-500 focus:ring-sky-500/30 rounded-full h-[42px] text-base"
                 />
-              </div>
-
-              {/* Include Registrations */}
-              <div className="md:col-span-1 flex items-end">
-                <label className="w-full h-[42px] flex cursor-pointer items-center gap-3 rounded-full border border-zinc-700 bg-black/40 px-4 py-2 hover:border-zinc-600 transition-all">
-                  <input
-                    type="checkbox"
-                    checked={withRegistrations}
-                    onChange={(e) => setWithRegistrations(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-700 accent-sky-500"
-                  />
-
-                  <span className="text-sm font-medium text-zinc-300">
-                    Include registrations
-                  </span>
-                </label>
               </div>
             </div>
 
