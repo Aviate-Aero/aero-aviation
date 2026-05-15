@@ -4,7 +4,7 @@ import React from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card/Standard"
-import { Plane, FileText, Database, Bot, ArrowRight } from "lucide-react"
+import { Plane, FileText, Database, Bot, ArrowRight, Ticket, RadioTower, CloudAlert, Wind } from "lucide-react"
 import { useAuth } from "./auth-context"
 
 interface AppCardProps {
@@ -134,6 +134,48 @@ export default function AppSelector() {
       description: "Check the information related to airport runways",
       icon: <Bot className="h-6 w-6" />,
       route: "/flight-intel/airport-runways",
+    },
+    {
+      title: "Aircraft Performance",
+      description: "View aircraft performance data including range, cruise speed, service ceiling, MTOW, dimensions, and passenger capacity",
+      icon: <Plane className="h-6 w-6" />,
+      route: "/flight-intel/aircraft-performance",
+    },
+    {
+      title: "Ticket Search",
+      description: "Search ticket options by route, travel date, price, duration, stops, and airline legs",
+      icon: <Ticket className="h-6 w-6" />,
+      route: "/flight-intel/ticket-search",
+    },
+    {
+      title: "NOTAM Search",
+      description: "Search airport NOTAMs by ICAO code, including operational notices, effective times, expiry times, and raw NOTAM text",
+      icon: <RadioTower className="h-6 w-6" />,
+      route: "/flight-intel/notams",
+    },
+    {
+      title: "FAA Airport Delays",
+      description: "Check FAA airport delay alerts including ground delays, ground stops, closures, and airspace flow programs",
+      icon: <CloudAlert className="h-6 w-6" />,
+      route: "/flight-intel/delays/airport-delays",
+    },
+     {
+      title: "FAA Delays",
+      description: "Check FAA airport delay alerts including ground delays, ground stops, closures, and airspace flow programs",
+      icon: <CloudAlert className="h-6 w-6" />,
+      route: "/flight-intel/delays/faa-delays",
+    },
+    {
+      title: "PIREPs",
+      description: "View recent pilot reports including turbulence, altitude, aircraft type, location, remarks, and raw PIREP text",
+      icon: <RadioTower className="h-6 w-6" />,
+      route: "/flight-intel/pireps",
+    },
+    {
+      title: "Winds Aloft",
+      description: "View winds aloft forecast data by altitude, station, forecast hour, wind direction, speed, and raw forecast groups",
+      icon: <Wind className="h-6 w-6" />,
+      route: "/flight-intel/winds-aloft",
     },
   ]
 
