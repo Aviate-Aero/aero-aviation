@@ -9,7 +9,7 @@ const footerLinks = {
     { label: "Aviation Intelligence", href: "/flight-intel/aviation-report" },
   ],
   company: [
-    { label: "About", href: "#" },
+    { label: "About", href: "/about-us" },
     { label: "HR Policy", href: "/hr-policy" },
     { label: "Careers", href: "#" },
     { label: "Contact", href: "/contact" },

@@ -4,7 +4,7 @@ import React from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card/Standard"
-import { Plane, FileText, Database, Bot, ArrowRight, Ticket, RadioTower, CloudAlert, Wind } from "lucide-react"
+import { Plane, FileText, Database, Bot, ArrowRight, Ticket, RadioTower, CloudAlert, Wind, Radar } from "lucide-react"
 import { useAuth } from "./auth-context"
 
 interface AppCardProps {
@@ -176,6 +176,18 @@ export default function AppSelector() {
       description: "View winds aloft forecast data by altitude, station, forecast hour, wind direction, speed, and raw forecast groups",
       icon: <Wind className="h-6 w-6" />,
       route: "/flight-intel/winds-aloft",
+    },
+    {
+      title: "Airport Charts",
+      description:"View airport diagrams, SID, STAR, approach, and other published procedure charts by ICAO code",
+      icon: <FileText className="h-6 w-6" />,
+      route: "/flight-intel/aerodrome-charts",  
+    },
+    {
+      title: "ADS-B Statistics",
+      description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
+      icon: <Radar className="h-6 w-6" />,
+      route: "/flight-intel/adsb-tracking",
     },
   ]
 

@@ -1,11 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Button } from "@/components/buttons/Standard"
-import { Starfield } from "@/components/ui/starfield/Standard"
-import { Navbar } from "@/components/ui/navbar/Standard"
-import { FooterSection } from "@/components/ui/footer/Standard"
-import { CircleArrowRight, Plane, HeartPulse, FileText, Users, PlaneLanding, PlaneTakeoff, Mail } from "lucide-react"
+import { Plane, HeartPulse, FileText, Users, PlaneLanding, PlaneTakeoff, Mail } from "lucide-react"
 import { Card, CardContent } from "@/components/card/Standard"
 
 const charterServices = [
