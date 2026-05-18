@@ -13,7 +13,6 @@ import { dispatchAPI } from "@/components/lib/dispatch/dispatch-api"
 import { calculateWindComponents, parseWind } from "@/components/lib/dispatch/weather-utils"
 import { AIRPORT_DATABASE } from "@/components/constants/dispatch/dispatch"
 import type { DispatchState } from "@/components/types/disaptch"
-import { AirportInfo } from "@/components/flight-intel/dispatch/airport-info"
 import { Taf } from "@/components/flight-intel/dispatch/taf"
 import {
   exportWeatherPDF,
@@ -25,7 +24,6 @@ import {
   type RiskAssessmentData,
 } from "@/components/lib/pdf-export/dispatch/pdf-export-dispatch"
 import { Button } from "@/components/buttons/Standard"
-import { Pirep } from "@/components/flight-intel/dispatch/pirep"
 import { calculateFuelPlan } from "@/components/lib/dispatch/fuel-calculations"
 
 type TafResponse = { full: string; provider?: string }
@@ -705,10 +703,6 @@ export default function DispatchPage() {
         }}
         onStateUpdate={handleTafUpdate}
       />
-
-      <AirportInfo onAirportDataUpdate={handleAirportDataUpdate} />
-
-      <Pirep onPirepUpdate={handlePirepUpdate} />
 
       <FuelPlanningCard
         policy={state.policy}

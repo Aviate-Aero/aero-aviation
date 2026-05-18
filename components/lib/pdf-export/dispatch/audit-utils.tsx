@@ -29,7 +29,7 @@ export async function generateAuditStamp(
     hash = "x" + h.toString(16)
   }
 
-  const sources = "Data sources: AVWX API"
+  const sources = "Data sources: Skylink API"
   const fullReport = `Audit: ${utc}Z\n${sources}\nPayload SHA-256: ${hash}`
 
   return {
