@@ -189,11 +189,17 @@ export default function AppSelector() {
       icon: <Radar className="h-6 w-6" />,
       route: "/flight-intel/adsb-tracking",
     },
-        {
+    {
       title: "Airport Routes",
       description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
       icon: <Radar className="h-6 w-6" />,
       route: "/flight-intel/airport-routes",
+    },
+        {
+      title: "FAA LADD",
+      description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
+      icon: <Radar className="h-6 w-6" />,
+      route: "/flight-intel/faa-ladd",
     },
   ]
 
