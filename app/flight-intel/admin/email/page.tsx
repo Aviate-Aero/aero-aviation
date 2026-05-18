@@ -3,9 +3,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Mail, Send, Users, X, ChevronDown, ChevronUp,
-  ArrowLeft, CheckCircle, AlertCircle, Loader2, Plus,
-  Paperclip, FileText, Trash2,
+  Mail,
+  Send,
+  Users,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ArrowLeft,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Plus,
+  Paperclip,
+  FileText,
+  Trash2,
+  UserPlus,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { createSupabaseClient } from '@/components/lib/supabase/supbase-client'
@@ -13,21 +25,52 @@ import { createSupabaseClient } from '@/components/lib/supabase/supbase-client'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Employee {
+  id: string
   full_name: string
   email: string | null
   department: string
   role: string
 }
 
+interface EmailGroup {
+  id: string
+  name: string
+  description: string | null
+}
+
+interface EmailContact {
+  id: string
+  full_name: string
+  email: string
+  department: string | null
+  role: string | null
+  source: string
+  employee_id: string | null
+}
+
+interface GroupMemberRow {
+  email_contacts: EmailContact[] | EmailContact | null
+}
+
 type SendState = 'idle' | 'sending' | 'success' | 'error'
 
-// ─── Employee picker chip ─────────────────────────────────────────────────────
+// ─── Recipient chip ───────────────────────────────────────────────────────────
 
-function RecipientChip({ email, onRemove }: { email: string; onRemove: () => void }) {
+function RecipientChip({
+  email,
+  onRemove,
+}: {
+  email: string
+  onRemove: () => void
+}) {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-500/15 text-sky-300 text-xs rounded-full border border-sky-500/30">
       {email}
-      <button type="button" onClick={onRemove} className="hover:text-white transition-colors">
+      <button
+        type="button"
+        onClick={onRemove}
+        className="hover:text-white transition-colors"
+      >
         <X className="w-3 h-3" />
       </button>
     </span>
@@ -40,15 +83,15 @@ export default function AdminEmailPage() {
   const router = useRouter()
 
   // Recipients
-  const [toList, setToList]       = useState<string[]>([])
-  const [ccList, setCcList]       = useState<string[]>([])
-  const [toInput, setToInput]     = useState('')
-  const [ccInput, setCcInput]     = useState('')
-  const [showCc, setShowCc]       = useState(false)
+  const [toList, setToList] = useState<string[]>([])
+  const [ccList, setCcList] = useState<string[]>([])
+  const [toInput, setToInput] = useState('')
+  const [ccInput, setCcInput] = useState('')
+  const [showCc, setShowCc] = useState(false)
 
   // Compose
-  const [subject, setSubject]     = useState('')
-  const [body, setBody]           = useState('')
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
 
   // Attachments
   const [attachments, setAttachments] = useState<File[]>([])
@@ -56,47 +99,111 @@ export default function AdminEmailPage() {
 
   // Employees
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [showPicker, setShowPicker] = useState(false)
-  const [pickerSearch, setPickerSearch] = useState('')
-  const pickerRef = useRef<HTMLDivElement>(null)
+  const [showEmployeePicker, setShowEmployeePicker] = useState(false)
+  const [employeeSearch, setEmployeeSearch] = useState('')
+  const employeePickerRef = useRef<HTMLDivElement>(null)
+
+  // Groups
+  const [groups, setGroups] = useState<EmailGroup[]>([])
+  const [showGroupPicker, setShowGroupPicker] = useState(false)
+  const [groupLoadingId, setGroupLoadingId] = useState<string | null>(null)
+  const groupPickerRef = useRef<HTMLDivElement>(null)
 
   // Preview
-  const [preview, setPreview]     = useState(false)
+  const [preview, setPreview] = useState(false)
 
   // Send state
   const [sendState, setSendState] = useState<SendState>('idle')
-  const [errorMsg, setErrorMsg]   = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+  
 
-  // ── Fetch employees ──────────────────────────────────────────────────────────
+  // ── Fetch employees ─────────────────────────────────────────────────────────
+
   useEffect(() => {
     const supabase = createSupabaseClient()
+
     supabase
       .from('employees')
-      .select('full_name, email, department, role')
+      .select('id, full_name, email, department, role')
       .not('email', 'is', null)
-      .then(({ data }) => setEmployees((data as Employee[]) || []))
+      .order('full_name')
+      .then(({ data, error }) => {
+        if (error) {
+          setErrorMsg(error.message)
+          setSendState('error')
+          return
+        }
+
+        setEmployees((data as Employee[]) || [])
+      })
   }, [])
 
-  // Close picker on outside click
+  // ── Fetch email groups ──────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const supabase = createSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('email_groups')
+        .select('id, name, description')
+        .order('name')
+
+      if (error) {
+        setErrorMsg(error.message)
+        setSendState('error')
+        return
+      }
+
+      setGroups((data as EmailGroup[]) || [])
+    }
+
+    fetchGroups()
+  }, [])
+
+  // ── Close pickers on outside click ──────────────────────────────────────────
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowPicker(false)
+      if (
+        employeePickerRef.current &&
+        !employeePickerRef.current.contains(e.target as Node)
+      ) {
+        setShowEmployeePicker(false)
+      }
+
+      if (
+        groupPickerRef.current &&
+        !groupPickerRef.current.contains(e.target as Node)
+      ) {
+        setShowGroupPicker(false)
       }
     }
+
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  const addEmail = (list: string[], setter: (v: string[]) => void, raw: string) => {
-    const emails = raw.split(/[\s,;]+/).map(e => e.trim().toLowerCase()).filter(e => e.includes('@'))
+  const normalizeEmails = (raw: string) => {
+    return raw
+      .split(/[\s,;]+/)
+      .map(email => email.trim().toLowerCase())
+      .filter(email => email.includes('@'))
+  }
+
+  const addEmail = (
+    list: string[],
+    setter: (v: string[]) => void,
+    raw: string,
+  ) => {
+    const emails = normalizeEmails(raw)
     const next = [...new Set([...list, ...emails])]
     setter(next)
   }
 
-  const handleToKeyDown = (e: React.KeyboardEvent) => {
+  const handleToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (['Enter', ',', ';', ' ', 'Tab'].includes(e.key) && toInput.trim()) {
       e.preventDefault()
       addEmail(toList, setToList, toInput)
@@ -104,7 +211,7 @@ export default function AdminEmailPage() {
     }
   }
 
-  const handleCcKeyDown = (e: React.KeyboardEvent) => {
+  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (['Enter', ',', ';', ' ', 'Tab'].includes(e.key) && ccInput.trim()) {
       e.preventDefault()
       addEmail(ccList, setCcList, ccInput)
@@ -112,26 +219,107 @@ export default function AdminEmailPage() {
     }
   }
 
-  const addFromEmployee = (emp: Employee) => {
-    if (!emp.email) return
-    setToList(prev => [...new Set([...prev, emp.email!])])
-    setShowPicker(false)
-    setPickerSearch('')
+  const getJoinedContact = (
+  contact: EmailContact[] | EmailContact | null,
+): EmailContact | null => {
+  if (!contact) return null
+
+  if (Array.isArray(contact)) {
+    return contact[0] || null
   }
 
-  const filteredEmployees = employees.filter(e =>
-    !toList.includes(e.email || '') &&
-    (e.full_name.toLowerCase().includes(pickerSearch.toLowerCase()) ||
-     (e.email || '').toLowerCase().includes(pickerSearch.toLowerCase()) ||
-     e.department.toLowerCase().includes(pickerSearch.toLowerCase()))
-  )
+  return contact
+}
 
-  // ── Attachment handlers ──────────────────────────────────────────────────────
+  const addFromEmployee = (emp: Employee) => {
+    if (!emp.email) return
+
+    setToList(prev => [...new Set([...prev, emp.email!.toLowerCase()])])
+    setShowEmployeePicker(false)
+    setEmployeeSearch('')
+  }
+
+  const getJoinedEmployee = (
+  employees: Employee[] | Employee | null,
+): Employee | null => {
+  if (!employees) return null
+
+  if (Array.isArray(employees)) {
+    return employees[0] || null
+  }
+
+  return employees
+}
+
+const addGroupRecipients = async (groupId: string) => {
+  try {
+    setGroupLoadingId(groupId)
+    setErrorMsg('')
+    setSendState('idle')
+
+    const supabase = createSupabaseClient()
+
+    const { data, error } = await supabase
+      .from('email_group_members')
+      .select(`
+        email_contacts (
+          id,
+          full_name,
+          email,
+          department,
+          role,
+          source,
+          employee_id
+        )
+      `)
+      .eq('group_id', groupId)
+
+    if (error) throw error
+
+    const emails = ((data || []) as unknown as GroupMemberRow[])
+      .map(row => getJoinedContact(row.email_contacts)?.email?.toLowerCase())
+      .filter(Boolean) as string[]
+
+    if (!emails.length) {
+      setErrorMsg('This group has no members with email addresses.')
+      setSendState('error')
+      return
+    }
+
+    setToList(prev => [...new Set([...prev, ...emails])])
+    setShowGroupPicker(false)
+  } catch (err) {
+    setErrorMsg(err instanceof Error ? err.message : 'Failed to load group')
+    setSendState('error')
+  } finally {
+    setGroupLoadingId(null)
+  }
+}
+
+  const filteredEmployees = employees.filter(emp => {
+    const search = employeeSearch.toLowerCase()
+
+    return (
+      !toList.includes(emp.email?.toLowerCase() || '') &&
+      (
+        emp.full_name.toLowerCase().includes(search) ||
+        (emp.email || '').toLowerCase().includes(search) ||
+        emp.department.toLowerCase().includes(search) ||
+        emp.role.toLowerCase().includes(search)
+      )
+    )
+  })
+
+  // ── Attachment handlers ─────────────────────────────────────────────────────
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || [])
-    const totalSize = [...attachments, ...selectedFiles].reduce((sum, f) => sum + f.size, 0)
-    const maxTotalSize = 10 * 1024 * 1024 // 10 MB total limit
+    const totalSize = [...attachments, ...selectedFiles].reduce(
+      (sum, file) => sum + file.size,
+      0,
+    )
+
+    const maxTotalSize = 10 * 1024 * 1024
 
     if (totalSize > maxTotalSize) {
       setErrorMsg('Total attachment size cannot exceed 10 MB.')
@@ -140,33 +328,54 @@ export default function AdminEmailPage() {
     }
 
     setAttachments(prev => [...prev, ...selectedFiles])
-    if (fileInputRef.current) fileInputRef.current.value = '' // allow re-selecting same file
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
-  // ── Send ─────────────────────────────────────────────────────────────────────
+  // ── Send ────────────────────────────────────────────────────────────────────
 
   const handleSend = async () => {
-    const finalTo = [...toList]
-    if (toInput.trim()) {
-      addEmail(finalTo, () => {}, toInput)
-      finalTo.push(...toInput.split(/[\s,;]+/).map(e => e.trim()).filter(e => e.includes('@')))
+    const manualToEmails = toInput.trim() ? normalizeEmails(toInput) : []
+    const manualCcEmails = ccInput.trim() ? normalizeEmails(ccInput) : []
+
+    const finalTo = [...new Set([...toList, ...manualToEmails])]
+    const finalCc = [...new Set([...ccList, ...manualCcEmails])]
+
+    if (!finalTo.length) {
+      setErrorMsg('Add at least one recipient.')
+      setSendState('error')
+      return
     }
 
-    if (!finalTo.length) { setErrorMsg('Add at least one recipient.'); setSendState('error'); return }
-    if (!subject.trim())  { setErrorMsg('Subject cannot be empty.');  setSendState('error'); return }
-    if (!body.trim())     { setErrorMsg('Body cannot be empty.');     setSendState('error'); return }
+    if (!subject.trim()) {
+      setErrorMsg('Subject cannot be empty.')
+      setSendState('error')
+      return
+    }
+
+    if (!body.trim()) {
+      setErrorMsg('Body cannot be empty.')
+      setSendState('error')
+      return
+    }
 
     setSendState('sending')
     setErrorMsg('')
 
     try {
       const formData = new FormData()
-      formData.append('to', JSON.stringify([...new Set(finalTo)]))
-      if (ccList.length) formData.append('cc', JSON.stringify(ccList))
+
+      formData.append('to', JSON.stringify(finalTo))
+      if (finalCc.length) {
+        formData.append('cc', JSON.stringify(finalCc))
+      }
+
       formData.append('subject', subject.trim())
       formData.append('body', body.trim())
 
@@ -180,13 +389,23 @@ export default function AdminEmailPage() {
       })
 
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Unknown error')
+
+      if (!res.ok) {
+        throw new Error(json.error || 'Unknown error')
+      }
 
       setSendState('success')
+
       setTimeout(() => {
         setSendState('idle')
-        setToList([]); setCcList([]); setToInput(''); setCcInput('')
-        setSubject(''); setBody(''); setAttachments([]); setPreview(false)
+        setToList([])
+        setCcList([])
+        setToInput('')
+        setCcInput('')
+        setSubject('')
+        setBody('')
+        setAttachments([])
+        setPreview(false)
       }, 3000)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to send email')
@@ -194,7 +413,7 @@ export default function AdminEmailPage() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="relative z-20 min-h-screen mt-40">
@@ -215,11 +434,14 @@ export default function AdminEmailPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
+
               <span className="text-zinc-700">|</span>
+
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-sky-500/20 rounded-xl flex items-center justify-center border border-sky-500/30">
                   <Mail className="w-5 h-5 text-sky-400" />
                 </div>
+
                 <div>
                   <h1 className="text-2xl font-light text-white">Email</h1>
                   <p className="text-sm text-zinc-400">Compose &amp; Send</p>
@@ -229,22 +451,40 @@ export default function AdminEmailPage() {
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setPreview(p => !p)}
+                onClick={() => router.push('/flight-intel/admin/email/groups')}
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                Manage Groups
+              </button>
+
+              <button
+                onClick={() => setPreview(prev => !prev)}
                 className="px-4 py-2 text-sm rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors"
               >
                 {preview ? 'Edit' : 'Preview'}
               </button>
+
               <button
                 onClick={handleSend}
                 disabled={sendState === 'sending' || sendState === 'success'}
                 className="flex items-center gap-2 px-6 py-2 text-sm font-medium rounded-full bg-sky-500 hover:bg-sky-600 text-white transition-all duration-[650ms] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendState === 'sending' ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending…
+                  </>
                 ) : sendState === 'success' ? (
-                  <><CheckCircle className="w-4 h-4" /> Sent!</>
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Sent!
+                  </>
                 ) : (
-                  <><Send className="w-4 h-4" /> Send</>
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send
+                  </>
                 )}
               </button>
             </div>
@@ -257,78 +497,185 @@ export default function AdminEmailPage() {
               Email sent successfully! The form will reset shortly.
             </div>
           )}
+
           {sendState === 'error' && errorMsg && (
             <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {errorMsg}
-              <button onClick={() => setSendState('idle')} className="ml-auto"><X className="w-4 h-4" /></button>
+              <button
+                onClick={() => setSendState('idle')}
+                className="ml-auto"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
           {/* Compose card */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-visible">
             {/* TO field */}
             <div className="flex items-start gap-3 px-5 py-4 border-b border-zinc-800">
-              <span className="text-xs text-zinc-500 pt-1.5 w-8 shrink-0">To</span>
+              <span className="text-xs text-zinc-500 pt-1.5 w-8 shrink-0">
+                To
+              </span>
+
               <div className="flex-1 flex flex-wrap gap-1.5 min-h-[28px]">
-                {toList.map(e => (
-                  <RecipientChip key={e} email={e} onRemove={() => setToList(toList.filter(x => x !== e))} />
+                {toList.map(email => (
+                  <RecipientChip
+                    key={email}
+                    email={email}
+                    onRemove={() =>
+                      setToList(prev => prev.filter(item => item !== email))
+                    }
+                  />
                 ))}
+
                 <input
                   type="text"
                   value={toInput}
                   onChange={e => setToInput(e.target.value)}
                   onKeyDown={handleToKeyDown}
-                  onBlur={() => { if (toInput.trim()) { addEmail(toList, setToList, toInput); setToInput('') } }}
+                  onBlur={() => {
+                    if (toInput.trim()) {
+                      addEmail(toList, setToList, toInput)
+                      setToInput('')
+                    }
+                  }}
                   placeholder={toList.length ? '' : 'email@example.com, …'}
                   className="flex-1 min-w-[160px] bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
                 />
               </div>
-              {/* Employee picker button */}
-              <div className="relative shrink-0" ref={pickerRef}>
+
+              {/* Groups picker */}
+              <div className="relative shrink-0" ref={groupPickerRef}>
                 <button
                   type="button"
-                  onClick={() => setShowPicker(p => !p)}
+                  onClick={() => setShowGroupPicker(prev => !prev)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-sky-400 border border-zinc-700 hover:border-sky-500/50 rounded-lg transition-colors"
                 >
                   <Users className="w-3.5 h-3.5" />
-                  Staff
-                  {showPicker ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  Groups
+                  {showGroupPicker ? (
+                    <ChevronUp className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
                 </button>
 
-                {showPicker && (
+                {showGroupPicker && (
+                  <div className="absolute right-0 top-full mt-1.5 w-72 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50">
+                    <div className="px-3 py-2.5 border-b border-zinc-800 flex items-center justify-between">
+                      <p className="text-xs text-zinc-400">Email Groups</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/flight-intel/admin/email/groups')}
+                        className="text-xs text-sky-400 hover:text-sky-300"
+                      >
+                        Manage
+                      </button>
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto">
+                      {groups.length === 0 ? (
+                        <p className="text-xs text-zinc-600 text-center py-4">
+                          No groups found
+                        </p>
+                      ) : (
+                        groups.map(group => (
+                          <button
+                            key={group.id}
+                            type="button"
+                            onClick={() => addGroupRecipients(group.id)}
+                            disabled={groupLoadingId === group.id}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left disabled:opacity-60"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400 text-xs font-bold shrink-0">
+                              {group.name.charAt(0).toUpperCase()}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-white truncate">
+                                {group.name}
+                              </p>
+                              {group.description && (
+                                <p className="text-xs text-zinc-500 truncate">
+                                  {group.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {groupLoadingId === group.id ? (
+                              <Loader2 className="w-3.5 h-3.5 text-zinc-600 ml-auto shrink-0 animate-spin" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 text-zinc-600 ml-auto shrink-0" />
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Employee picker */}
+              <div className="relative shrink-0" ref={employeePickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmployeePicker(prev => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-sky-400 border border-zinc-700 hover:border-sky-500/50 rounded-lg transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Staff
+                  {showEmployeePicker ? (
+                    <ChevronUp className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
+                </button>
+
+                {showEmployeePicker && (
                   <div className="absolute right-0 top-full mt-1.5 w-72 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50">
                     <div className="p-2.5 border-b border-zinc-800">
                       <input
                         autoFocus
                         type="text"
-                        value={pickerSearch}
-                        onChange={e => setPickerSearch(e.target.value)}
+                        value={employeeSearch}
+                        onChange={e => setEmployeeSearch(e.target.value)}
                         placeholder="Search employees…"
                         className="w-full bg-zinc-950 text-sm text-white placeholder-zinc-600 px-3 py-1.5 rounded-lg outline-none border border-zinc-700 focus:border-sky-500/50"
                       />
                     </div>
+
                     <div className="max-h-56 overflow-y-auto">
                       {filteredEmployees.length === 0 ? (
-                        <p className="text-xs text-zinc-600 text-center py-4">No employees found</p>
-                      ) : filteredEmployees.map(emp => (
-                        <button
-                          key={emp.email}
-                          type="button"
-                          onClick={() => addFromEmployee(emp)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
-                        >
-                          <div className="w-7 h-7 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400 text-xs font-bold shrink-0">
-                            {emp.full_name.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-white truncate">{emp.full_name}</p>
-                            <p className="text-xs text-zinc-500 truncate">{emp.email}</p>
-                          </div>
-                          <Plus className="w-3.5 h-3.5 text-zinc-600 ml-auto shrink-0" />
-                        </button>
-                      ))}
+                        <p className="text-xs text-zinc-600 text-center py-4">
+                          No employees found
+                        </p>
+                      ) : (
+                        filteredEmployees.map(emp => (
+                          <button
+                            key={emp.id}
+                            type="button"
+                            onClick={() => addFromEmployee(emp)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400 text-xs font-bold shrink-0">
+                              {emp.full_name.charAt(0).toUpperCase()}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-white truncate">
+                                {emp.full_name}
+                              </p>
+                              <p className="text-xs text-zinc-500 truncate">
+                                {emp.email}
+                              </p>
+                            </div>
+
+                            <Plus className="w-3.5 h-3.5 text-zinc-600 ml-auto shrink-0" />
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
@@ -339,22 +686,47 @@ export default function AdminEmailPage() {
             <div className="px-5 py-2.5 border-b border-zinc-800 flex items-center gap-3">
               {showCc ? (
                 <>
-                  <span className="text-xs text-zinc-500 w-8 shrink-0">CC</span>
+                  <span className="text-xs text-zinc-500 w-8 shrink-0">
+                    CC
+                  </span>
+
                   <div className="flex-1 flex flex-wrap gap-1.5">
-                    {ccList.map(e => (
-                      <RecipientChip key={e} email={e} onRemove={() => setCcList(ccList.filter(x => x !== e))} />
+                    {ccList.map(email => (
+                      <RecipientChip
+                        key={email}
+                        email={email}
+                        onRemove={() =>
+                          setCcList(prev =>
+                            prev.filter(item => item !== email),
+                          )
+                        }
+                      />
                     ))}
+
                     <input
                       type="text"
                       value={ccInput}
                       onChange={e => setCcInput(e.target.value)}
                       onKeyDown={handleCcKeyDown}
-                      onBlur={() => { if (ccInput.trim()) { addEmail(ccList, setCcList, ccInput); setCcInput('') } }}
+                      onBlur={() => {
+                        if (ccInput.trim()) {
+                          addEmail(ccList, setCcList, ccInput)
+                          setCcInput('')
+                        }
+                      }}
                       placeholder={ccList.length ? '' : 'cc@example.com'}
                       className="flex-1 min-w-[160px] bg-transparent text-sm text-white placeholder-zinc-600 outline-none"
                     />
                   </div>
-                  <button onClick={() => { setShowCc(false); setCcList([]); setCcInput('') }} className="text-zinc-600 hover:text-zinc-400">
+
+                  <button
+                    onClick={() => {
+                      setShowCc(false)
+                      setCcList([])
+                      setCcInput('')
+                    }}
+                    className="text-zinc-600 hover:text-zinc-400"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -370,7 +742,10 @@ export default function AdminEmailPage() {
 
             {/* Subject */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-800">
-              <span className="text-xs text-zinc-500 w-14 shrink-0">Subject</span>
+              <span className="text-xs text-zinc-500 w-14 shrink-0">
+                Subject
+              </span>
+
               <input
                 type="text"
                 value={subject}
@@ -390,6 +765,7 @@ export default function AdminEmailPage() {
                   onChange={handleFileSelect}
                   className="hidden"
                 />
+
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -398,6 +774,7 @@ export default function AdminEmailPage() {
                   <Paperclip className="w-3.5 h-3.5" />
                   Attach files
                 </button>
+
                 <span className="text-xs text-zinc-600">
                   (Max 10 MB total)
                 </span>
@@ -405,19 +782,24 @@ export default function AdminEmailPage() {
 
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {attachments.map((file, idx) => (
+                  {attachments.map((file, index) => (
                     <span
-                      key={`${file.name}-${idx}`}
+                      key={`${file.name}-${index}`}
                       className="inline-flex items-center gap-2 px-2.5 py-1 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-300 group"
                     >
                       <FileText className="w-3.5 h-3.5 text-zinc-500" />
-                      <span className="max-w-[120px] truncate">{file.name}</span>
+
+                      <span className="max-w-[120px] truncate">
+                        {file.name}
+                      </span>
+
                       <span className="text-zinc-600">
                         ({(file.size / 1024).toFixed(0)} KB)
                       </span>
+
                       <button
                         type="button"
-                        onClick={() => removeAttachment(idx)}
+                        onClick={() => removeAttachment(index)}
                         className="text-zinc-600 hover:text-rose-400 transition-colors"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -431,27 +813,47 @@ export default function AdminEmailPage() {
             {/* Body */}
             {preview ? (
               <div className="p-6">
-                {/* Branded preview – unchanged, uses Aero Aviation brand colors */}
                 <div className="rounded-xl overflow-hidden border border-zinc-700 max-w-xl mx-auto">
                   <div className="bg-[#08204a] px-8 py-6 text-center">
-                    <p className="text-white font-bold text-lg tracking-wide">Aero Aviation</p>
-                    <p className="text-[#a0b9e1] text-xs tracking-widest mt-1">Aviate Pro ME LLC Group</p>
+                    <p className="text-white font-bold text-lg tracking-wide">
+                      Aero Aviation
+                    </p>
+                    <p className="text-[#a0b9e1] text-xs tracking-widest mt-1">
+                      Aviate Pro ME LLC Group
+                    </p>
                   </div>
+
                   <div className="bg-[#1a56af] h-0.5" />
+
                   <div className="bg-white px-8 py-6">
-                    {subject && <p className="text-xs text-zinc-400 mb-4 pb-4 border-b border-zinc-200">{subject}</p>}
-                    <p className="text-zinc-800 text-sm leading-relaxed whitespace-pre-wrap">{body || 'Your message will appear here…'}</p>
+                    {subject && (
+                      <p className="text-xs text-zinc-400 mb-4 pb-4 border-b border-zinc-200">
+                        {subject}
+                      </p>
+                    )}
+
+                    <p className="text-zinc-800 text-sm leading-relaxed whitespace-pre-wrap">
+                      {body || 'Your message will appear here…'}
+                    </p>
+
                     {attachments.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-zinc-200 flex items-center gap-2 text-xs text-zinc-500">
                         <Paperclip className="w-3.5 h-3.5" />
-                        {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
+                        {attachments.length} attachment
+                        {attachments.length !== 1 ? 's' : ''}
                       </div>
                     )}
                   </div>
+
                   <div className="bg-zinc-50 px-8 py-4 text-center space-y-1">
                     <p className="text-zinc-400 text-xs">Aero Aviation</p>
-                    <p className="text-zinc-400 text-xs">Office 5170m, 3 Fitzroy Place, 1/1, Sauchiehall Street, Finnieston Glasgow Central, G3 7RH, United Kingdom</p>
-                    <p className="text-zinc-400 text-xs">info@aeroaviation.me</p>
+                    <p className="text-zinc-400 text-xs">
+                      Office 5170m, 3 Fitzroy Place, 1/1, Sauchiehall Street,
+                      Finnieston Glasgow Central, G3 7RH, United Kingdom
+                    </p>
+                    <p className="text-zinc-400 text-xs">
+                      info@aeroaviation.me
+                    </p>
                   </div>
                 </div>
               </div>
@@ -469,10 +871,21 @@ export default function AdminEmailPage() {
           {/* Recipient summary */}
           {(toList.length > 0 || ccList.length > 0 || attachments.length > 0) && (
             <p className="text-xs text-zinc-500 px-1">
-              Sending to <span className="text-zinc-300">{toList.length}</span> recipient{toList.length !== 1 ? 's' : ''}
-              {ccList.length > 0 && <>, CC <span className="text-zinc-300">{ccList.length}</span></>}
+              Sending to{' '}
+              <span className="text-zinc-300">{toList.length}</span>{' '}
+              recipient{toList.length !== 1 ? 's' : ''}
+
+              {ccList.length > 0 && (
+                <>
+                  , CC <span className="text-zinc-300">{ccList.length}</span>
+                </>
+              )}
+
               {attachments.length > 0 && (
-                <>, <span className="text-zinc-300">{attachments.length}</span> attachment{attachments.length !== 1 ? 's' : ''}</>
+                <>
+                  , <span className="text-zinc-300">{attachments.length}</span>{' '}
+                  attachment{attachments.length !== 1 ? 's' : ''}
+                </>
               )}
             </p>
           )}
