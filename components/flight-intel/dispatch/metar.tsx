@@ -87,7 +87,9 @@ function parseVisibility(raw: string) {
 }
 
 function parseClouds(raw: string) {
-  const matches = [...raw.matchAll(/\b(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?\b/g)]
+  const matches = [
+    ...raw.matchAll(/\b(FEW|SCT|BKN|OVC|VV)(\d{3})(CB|TCU)?\b/g),
+  ]
 
   if (!matches.length) {
     return {
@@ -235,33 +237,118 @@ function BadgeCat({ cat }: { cat: string }) {
 // --- Props Interface ---
 interface MetarProps {
   currentState: {
-    dep: string
-    arr: string
-    metarDep: string
-    metarArr: string
+    dep?: string
+    arr?: string
+    alternate?: string
+    metarDep?: string
+    metarArr?: string
+    metarAlternate?: string
   }
   onStateUpdate: (newState: {
     metarDep: string
     metarArr: string
+    metarAlternate: string
     dep?: string
     arr?: string
+    alternate?: string
   }) => void
 }
 
+type MetarCardType = 'dep' | 'arr' | 'alternate'
+
+interface MetarCardProps {
+  title: string
+  icao: string
+  metar: string
+  type: MetarCardType
+  copied: MetarCardType | null
+  accentClass: string
+  iconClass: string
+  onCopy: (text: string, type: MetarCardType) => void
+  renderTable: (metar: string) => React.ReactNode
+}
+
+function MetarCard({
+  title,
+  icao,
+  metar,
+  type,
+  copied,
+  accentClass,
+  iconClass,
+  onCopy,
+  renderTable,
+}: MetarCardProps) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center border ${accentClass}`}
+          >
+            <Cloud className={`w-5 h-5 ${iconClass}`} />
+          </div>
+
+          <div>
+            <h3 className="text-lg font-medium text-white">{title}</h3>
+            <p className="text-zinc-500 text-sm">{icao || '—'}</p>
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onCopy(metar, type)}
+          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+        >
+          {copied === type ? (
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Raw METAR */}
+      <div className="mb-6">
+        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
+          <code className="text-emerald-400 select-all break-all">
+            {metar || '—'}
+          </code>
+        </div>
+      </div>
+
+      {metar &&
+        metar !== '—' &&
+        metar !== 'Invalid ICAO' &&
+        renderTable(metar)}
+    </div>
+  )
+}
+
 export function Metar({ currentState, onStateUpdate }: MetarProps) {
-  const [dep, setDep] = useState(currentState.dep)
-  const [arr, setArr] = useState(currentState.arr)
-  const [metarDep, setMetarDep] = useState(currentState.metarDep)
-  const [metarArr, setMetarArr] = useState(currentState.metarArr)
+  const [dep, setDep] = useState(currentState.dep ?? '')
+  const [arr, setArr] = useState(currentState.arr ?? '')
+  const [alternate, setAlternate] = useState(currentState.alternate ?? '')
+
+  const [metarDep, setMetarDep] = useState(currentState.metarDep ?? '')
+  const [metarArr, setMetarArr] = useState(currentState.metarArr ?? '')
+  const [metarAlternate, setMetarAlternate] = useState(
+    currentState.metarAlternate ?? ''
+  )
+
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState<'dep' | 'arr' | null>(null)
+  const [copied, setCopied] = useState<MetarCardType | null>(null)
 
   // Sync with props
   useEffect(() => {
-    setDep(currentState.dep)
-    setArr(currentState.arr)
-    setMetarDep(currentState.metarDep)
-    setMetarArr(currentState.metarArr)
+    setDep(currentState.dep ?? '')
+    setArr(currentState.arr ?? '')
+    setAlternate(currentState.alternate ?? '')
+
+    setMetarDep(currentState.metarDep ?? '')
+    setMetarArr(currentState.metarArr ?? '')
+    setMetarAlternate(currentState.metarAlternate ?? '')
   }, [currentState])
 
   // Propagate changes upward
@@ -269,19 +356,25 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
     onStateUpdate({
       metarDep,
       metarArr,
+      metarAlternate,
       dep,
       arr,
+      alternate,
     })
-  }, [metarDep, metarArr, dep, arr, onStateUpdate])
+  }, [metarDep, metarArr, metarAlternate, dep, arr, alternate, onStateUpdate])
 
   const fetchSingleMetar = async (icao: string) => {
     const response = await fetch(`/api/skylink/metar?icao=${icao}`)
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch METAR for ${icao}`)
-    }
+    const data = await response.json().catch(() => null)
 
-    const data = await response.json()
+    if (!response.ok) {
+      console.error(`Failed to fetch METAR for ${icao}:`, data)
+
+      throw new Error(
+        data?.error || data?.details || `Failed to fetch METAR for ${icao}`
+      )
+    }
 
     return data.full ?? data.raw ?? '—'
   }
@@ -290,33 +383,48 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
     setLoading(true)
 
     try {
-      const cleanDep = dep.trim().toUpperCase()
-      const cleanArr = arr.trim().toUpperCase()
+      const cleanDep = (dep ?? '').trim().toUpperCase()
+      const cleanArr = (arr ?? '').trim().toUpperCase()
+      const cleanAlternate = (alternate ?? '').trim().toUpperCase()
 
-      if (!/^[A-Z]{4}$/.test(cleanDep) || !/^[A-Z]{4}$/.test(cleanArr)) {
+      const isValidIcao = (icao: string) => /^[A-Z]{4}$/.test(icao)
+
+      if (!isValidIcao(cleanDep)) {
         setMetarDep('Invalid ICAO')
+        return
+      }
+
+      if (!isValidIcao(cleanArr)) {
         setMetarArr('Invalid ICAO')
         return
       }
 
-      const [departureMetar, arrivalMetar] = await Promise.all([
+      if (cleanAlternate && !isValidIcao(cleanAlternate)) {
+        setMetarAlternate('Invalid ICAO')
+        return
+      }
+
+      const [departureMetar, arrivalMetar, alternateMetar] = await Promise.all([
         fetchSingleMetar(cleanDep),
         fetchSingleMetar(cleanArr),
+        cleanAlternate ? fetchSingleMetar(cleanAlternate) : Promise.resolve('—'),
       ])
 
       setMetarDep(departureMetar)
       setMetarArr(arrivalMetar)
+      setMetarAlternate(alternateMetar)
     } catch (error) {
       console.error('METAR fetch error:', error)
       setMetarDep('—')
       setMetarArr('—')
+      setMetarAlternate('—')
     } finally {
       setLoading(false)
     }
-  }, [dep, arr])
+  }, [dep, arr, alternate])
 
-  const copyToClipboard = (text: string, type: 'dep' | 'arr') => {
-    navigator.clipboard.writeText(text)
+  const copyToClipboard = (text: string, type: MetarCardType) => {
+    navigator.clipboard.writeText(text || '')
     setCopied(type)
     setTimeout(() => setCopied(null), 2000)
   }
@@ -327,6 +435,10 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
 
   const handleArrChange = (value: string) => {
     setArr(value.toUpperCase())
+  }
+
+  const handleAlternateChange = (value: string) => {
+    setAlternate(value.toUpperCase())
   }
 
   const renderTable = (metar: string) => {
@@ -344,7 +456,9 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-lg font-medium text-zinc-200">Weather Analysis</h4>
+          <h4 className="text-lg font-medium text-zinc-200">
+            Weather Analysis
+          </h4>
           <BadgeCat cat={cat} />
         </div>
 
@@ -422,7 +536,7 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
 
       {/* Input Section */}
       <div className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="space-y-3">
             <Label
               htmlFor="dep"
@@ -461,6 +575,25 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
             />
           </div>
 
+          <div className="space-y-3">
+            <Label
+              htmlFor="alternate"
+              className="text-zinc-300 font-medium flex items-center gap-2"
+            >
+              <MapPin className="w-4 h-4 text-purple-400" />
+              Alternate ICAO
+            </Label>
+
+            <Input
+              id="alternate"
+              value={alternate}
+              onChange={(e) => handleAlternateChange(e.target.value)}
+              maxLength={4}
+              placeholder="OMDB"
+              className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500 focus:border-sky-500 focus:ring-sky-500/20"
+            />
+          </div>
+
           <div className="flex items-end gap-3">
             <Button
               onClick={fetchMetars}
@@ -481,96 +614,42 @@ export function Metar({ currentState, onStateUpdate }: MetarProps) {
       </div>
 
       {/* METAR Display Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Departure */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-500/20 rounded-xl flex items-center justify-center border border-sky-500/30">
-                <Cloud className="w-5 h-5 text-sky-400" />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <MetarCard
+          title="Departure Weather"
+          icao={dep}
+          metar={metarDep}
+          type="dep"
+          copied={copied}
+          accentClass="bg-sky-500/20 border-sky-500/30"
+          iconClass="text-sky-400"
+          onCopy={copyToClipboard}
+          renderTable={renderTable}
+        />
 
-              <div>
-                <h3 className="text-lg font-medium text-white">
-                  Departure Weather
-                </h3>
-                <p className="text-zinc-500 text-sm">{dep}</p>
-              </div>
-            </div>
+        <MetarCard
+          title="Arrival Weather"
+          icao={arr}
+          metar={metarArr}
+          type="arr"
+          copied={copied}
+          accentClass="bg-emerald-500/20 border-emerald-500/30"
+          iconClass="text-emerald-400"
+          onCopy={copyToClipboard}
+          renderTable={renderTable}
+        />
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(metarDep, 'dep')}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
-            >
-              {copied === 'dep' ? (
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Raw METAR */}
-          <div className="mb-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
-              <code className="text-emerald-400 select-all break-all">
-                {metarDep || '—'}
-              </code>
-            </div>
-          </div>
-
-          {metarDep &&
-            metarDep !== '—' &&
-            metarDep !== 'Invalid ICAO' &&
-            renderTable(metarDep)}
-        </div>
-
-        {/* Arrival */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
-                <Cloud className="w-5 h-5 text-emerald-400" />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-white">
-                  Arrival Weather
-                </h3>
-                <p className="text-zinc-500 text-sm">{arr}</p>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(metarArr, 'arr')}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
-            >
-              {copied === 'arr' ? (
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Raw METAR */}
-          <div className="mb-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
-              <code className="text-emerald-400 select-all break-all">
-                {metarArr || '—'}
-              </code>
-            </div>
-          </div>
-
-          {metarArr &&
-            metarArr !== '—' &&
-            metarArr !== 'Invalid ICAO' &&
-            renderTable(metarArr)}
-        </div>
+        <MetarCard
+          title="Alternate Weather"
+          icao={alternate}
+          metar={metarAlternate}
+          type="alternate"
+          copied={copied}
+          accentClass="bg-purple-500/20 border-purple-500/30"
+          iconClass="text-purple-400"
+          onCopy={copyToClipboard}
+          renderTable={renderTable}
+        />
       </div>
     </motion.div>
   )

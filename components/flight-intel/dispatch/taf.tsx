@@ -53,18 +53,24 @@ interface TafPeriod {
 // --- Props Interface ---
 interface TafProps {
   currentState: {
-    dep: string
-    arr: string
-    tafDep: string
-    tafArr: string
+    dep?: string
+    arr?: string
+    alternate?: string
+    tafDep?: string
+    tafArr?: string
+    tafAlternate?: string
   }
   onStateUpdate: (newState: {
     tafDep: string
     tafArr: string
+    tafAlternate: string
     dep?: string
     arr?: string
+    alternate?: string
   }) => void
 }
+
+type TafCardType = 'dep' | 'arr' | 'alternate'
 
 // --- Parsing Functions ---
 function parseTafTime(raw: string): TafTimeInfo | null {
@@ -450,21 +456,100 @@ function TafPeriodCard({ period, isFirst = false }: TafPeriodCardProps) {
   )
 }
 
+interface TafCardProps {
+  title: string
+  icao: string
+  taf: string
+  type: TafCardType
+  copied: TafCardType | null
+  accentClass: string
+  iconClass: string
+  onCopy: (text: string, type: TafCardType) => void
+  renderTafAnalysis: (taf: string) => React.ReactNode
+}
+
+function TafCard({
+  title,
+  icao,
+  taf,
+  type,
+  copied,
+  accentClass,
+  iconClass,
+  onCopy,
+  renderTafAnalysis,
+}: TafCardProps) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center border ${accentClass}`}
+          >
+            <Calendar className={`w-5 h-5 ${iconClass}`} />
+          </div>
+
+          <div>
+            <h3 className="text-lg font-medium text-white">{title}</h3>
+            <p className="text-zinc-500 text-sm">{icao || '—'}</p>
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onCopy(taf, type)}
+          className="text-zinc-400 hover:text-white hover:bg-zinc-800"
+        >
+          {copied === type ? (
+            <CheckCircle className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Raw TAF */}
+      <div className="mb-6">
+        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
+          <code className="text-emerald-400 select-all whitespace-pre-wrap">
+            {taf || '—'}
+          </code>
+        </div>
+      </div>
+
+      {taf &&
+        taf !== '—' &&
+        taf !== 'Invalid ICAO' &&
+        renderTafAnalysis(taf)}
+    </div>
+  )
+}
+
 // --- Main TAF Component ---
 export function Taf({ currentState, onStateUpdate }: TafProps) {
-  const [dep, setDep] = useState(currentState.dep)
-  const [arr, setArr] = useState(currentState.arr)
-  const [tafDep, setTafDep] = useState(currentState.tafDep)
-  const [tafArr, setTafArr] = useState(currentState.tafArr)
+  const [dep, setDep] = useState(currentState.dep ?? '')
+  const [arr, setArr] = useState(currentState.arr ?? '')
+  const [alternate, setAlternate] = useState(currentState.alternate ?? '')
+
+  const [tafDep, setTafDep] = useState(currentState.tafDep ?? '')
+  const [tafArr, setTafArr] = useState(currentState.tafArr ?? '')
+  const [tafAlternate, setTafAlternate] = useState(
+    currentState.tafAlternate ?? ''
+  )
+
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState<'dep' | 'arr' | null>(null)
+  const [copied, setCopied] = useState<TafCardType | null>(null)
 
   // Sync with props
   useEffect(() => {
-    setDep(currentState.dep)
-    setArr(currentState.arr)
-    setTafDep(currentState.tafDep)
-    setTafArr(currentState.tafArr)
+    setDep(currentState.dep ?? '')
+    setArr(currentState.arr ?? '')
+    setAlternate(currentState.alternate ?? '')
+
+    setTafDep(currentState.tafDep ?? '')
+    setTafArr(currentState.tafArr ?? '')
+    setTafAlternate(currentState.tafAlternate ?? '')
   }, [currentState])
 
   // Propagate changes upward
@@ -472,10 +557,12 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
     onStateUpdate({
       tafDep,
       tafArr,
+      tafAlternate,
       dep,
       arr,
+      alternate,
     })
-  }, [tafDep, tafArr, dep, arr, onStateUpdate])
+  }, [tafDep, tafArr, tafAlternate, dep, arr, alternate, onStateUpdate])
 
   const fetchSingleTaf = async (icao: string) => {
     const response = await fetch(`/api/skylink/taf?icao=${icao}`)
@@ -497,33 +584,48 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
     setLoading(true)
 
     try {
-      const cleanDep = dep.trim().toUpperCase()
-      const cleanArr = arr.trim().toUpperCase()
+      const cleanDep = (dep ?? '').trim().toUpperCase()
+      const cleanArr = (arr ?? '').trim().toUpperCase()
+      const cleanAlternate = (alternate ?? '').trim().toUpperCase()
 
-      if (!/^[A-Z]{4}$/.test(cleanDep) || !/^[A-Z]{4}$/.test(cleanArr)) {
+      const isValidIcao = (icao: string) => /^[A-Z]{4}$/.test(icao)
+
+      if (!isValidIcao(cleanDep)) {
         setTafDep('Invalid ICAO')
+        return
+      }
+
+      if (!isValidIcao(cleanArr)) {
         setTafArr('Invalid ICAO')
         return
       }
 
-      const [departureTaf, arrivalTaf] = await Promise.all([
+      if (cleanAlternate && !isValidIcao(cleanAlternate)) {
+        setTafAlternate('Invalid ICAO')
+        return
+      }
+
+      const [departureTaf, arrivalTaf, alternateTaf] = await Promise.all([
         fetchSingleTaf(cleanDep),
         fetchSingleTaf(cleanArr),
+        cleanAlternate ? fetchSingleTaf(cleanAlternate) : Promise.resolve('—'),
       ])
 
       setTafDep(departureTaf)
       setTafArr(arrivalTaf)
+      setTafAlternate(alternateTaf)
     } catch (error) {
       console.error('TAF fetch error:', error)
       setTafDep('—')
       setTafArr('—')
+      setTafAlternate('—')
     } finally {
       setLoading(false)
     }
-  }, [dep, arr])
+  }, [dep, arr, alternate])
 
-  const copyToClipboard = (text: string, type: 'dep' | 'arr') => {
-    navigator.clipboard.writeText(text)
+  const copyToClipboard = (text: string, type: TafCardType) => {
+    navigator.clipboard.writeText(text || '')
     setCopied(type)
     setTimeout(() => setCopied(null), 2000)
   }
@@ -534,6 +636,10 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
 
   const handleArrChange = (value: string) => {
     setArr(value.toUpperCase())
+  }
+
+  const handleAlternateChange = (value: string) => {
+    setAlternate(value.toUpperCase())
   }
 
   const renderTafAnalysis = (taf: string) => {
@@ -591,14 +697,14 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
             Terminal Aerodrome Forecast
           </h2>
           <p className="text-zinc-400">
-            Aviation weather forecasts for departure and arrival
+            Aviation weather forecasts for departure, arrival, and alternate
           </p>
         </div>
       </div>
 
       {/* Input Section */}
       <div className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-2xl p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="space-y-3">
             <Label
               htmlFor="taf-dep"
@@ -637,6 +743,25 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
             />
           </div>
 
+          <div className="space-y-3">
+            <Label
+              htmlFor="taf-alternate"
+              className="text-zinc-300 font-medium flex items-center gap-2"
+            >
+              <MapPin className="w-4 h-4 text-purple-400" />
+              Alternate ICAO
+            </Label>
+
+            <Input
+              id="taf-alternate"
+              value={alternate}
+              onChange={(e) => handleAlternateChange(e.target.value)}
+              maxLength={4}
+              placeholder="OMDB"
+              className="bg-zinc-950 border-zinc-700 text-white placeholder-zinc-500 focus:border-sky-500 focus:ring-sky-500/20"
+            />
+          </div>
+
           <div className="flex items-end gap-3">
             <Button
               onClick={fetchTafs}
@@ -657,94 +782,42 @@ export function Taf({ currentState, onStateUpdate }: TafProps) {
       </div>
 
       {/* TAF Display Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Departure TAF */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-500/20 rounded-xl flex items-center justify-center border border-sky-500/30">
-                <Calendar className="w-5 h-5 text-sky-400" />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <TafCard
+          title="Departure TAF"
+          icao={dep}
+          taf={tafDep}
+          type="dep"
+          copied={copied}
+          accentClass="bg-sky-500/20 border-sky-500/30"
+          iconClass="text-sky-400"
+          onCopy={copyToClipboard}
+          renderTafAnalysis={renderTafAnalysis}
+        />
 
-              <div>
-                <h3 className="text-lg font-medium text-white">
-                  Departure TAF
-                </h3>
-                <p className="text-zinc-500 text-sm">{dep}</p>
-              </div>
-            </div>
+        <TafCard
+          title="Arrival TAF"
+          icao={arr}
+          taf={tafArr}
+          type="arr"
+          copied={copied}
+          accentClass="bg-emerald-500/20 border-emerald-500/30"
+          iconClass="text-emerald-400"
+          onCopy={copyToClipboard}
+          renderTafAnalysis={renderTafAnalysis}
+        />
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(tafDep, 'dep')}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
-            >
-              {copied === 'dep' ? (
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Raw TAF */}
-          <div className="mb-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
-              <code className="text-emerald-400 select-all whitespace-pre-wrap">
-                {tafDep || '—'}
-              </code>
-            </div>
-          </div>
-
-          {tafDep &&
-            tafDep !== '—' &&
-            tafDep !== 'Invalid ICAO' &&
-            renderTafAnalysis(tafDep)}
-        </div>
-
-        {/* Arrival TAF */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center border border-emerald-500/30">
-                <Calendar className="w-5 h-5 text-emerald-400" />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-white">Arrival TAF</h3>
-                <p className="text-zinc-500 text-sm">{arr}</p>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(tafArr, 'arr')}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800"
-            >
-              {copied === 'arr' ? (
-                <CheckCircle className="w-4 h-4 text-emerald-400" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Raw TAF */}
-          <div className="mb-6">
-            <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 font-mono text-sm">
-              <code className="text-emerald-400 select-all whitespace-pre-wrap">
-                {tafArr || '—'}
-              </code>
-            </div>
-          </div>
-
-          {tafArr &&
-            tafArr !== '—' &&
-            tafArr !== 'Invalid ICAO' &&
-            renderTafAnalysis(tafArr)}
-        </div>
+        <TafCard
+          title="Alternate TAF"
+          icao={alternate}
+          taf={tafAlternate}
+          type="alternate"
+          copied={copied}
+          accentClass="bg-purple-500/20 border-purple-500/30"
+          iconClass="text-purple-400"
+          onCopy={copyToClipboard}
+          renderTafAnalysis={renderTafAnalysis}
+        />
       </div>
     </motion.div>
   )

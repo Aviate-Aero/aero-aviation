@@ -10,7 +10,10 @@ import { RiskAssessmentCard } from "@/components/flight-intel/dispatch/risk-asse
 import { NotesCard } from "@/components/flight-intel/dispatch/notes-card"
 import { CollaborationCard } from "@/components/flight-intel/dispatch/collaboration-card"
 import { dispatchAPI } from "@/components/lib/dispatch/dispatch-api"
-import { calculateWindComponents, parseWind } from "@/components/lib/dispatch/weather-utils"
+import {
+  calculateWindComponents,
+  parseWind,
+} from "@/components/lib/dispatch/weather-utils"
 import { AIRPORT_DATABASE } from "@/components/constants/dispatch/dispatch"
 import type { DispatchState } from "@/components/types/disaptch"
 import { Taf } from "@/components/flight-intel/dispatch/taf"
@@ -26,22 +29,64 @@ import {
 import { Button } from "@/components/buttons/Standard"
 import { calculateFuelPlan } from "@/components/lib/dispatch/fuel-calculations"
 
-type TafResponse = { full: string; provider?: string }
+type TafResponse = {
+  full: string
+  provider?: string
+}
+
 type DispatchAPIWithTaf = typeof dispatchAPI & {
   getTaf?: (icao: string) => Promise<TafResponse>
 }
 
+type DispatchPageState = DispatchState & {
+  alternate: string
+  metarAlternate: string
+  tafDep: string
+  tafArr: string
+  tafAlternate: string
+  deepLink: string
+  auditReport: string
+  riskAssessment: {
+    checklist: {
+      weatherWithinLimits: boolean
+      crewWithinDutyTime: boolean
+      aircraftServiceable: boolean
+      documentationAvailable: boolean
+      riskMitigationInPlace: boolean
+    }
+    riskNotes: string
+  }
+}
+
 const parseFlightCategory = (raw: string) => {
-  if (!raw || raw === "—") return { cat: "—", ceil: null as number | null, vis: null as number | null }
+  if (!raw || raw === "—") {
+    return {
+      cat: "—",
+      ceil: null as number | null,
+      vis: null as number | null,
+    }
+  }
+
   const text = raw.toUpperCase()
 
   let ceil: number | null = null
+
   const cloudMatches = text.match(/\b(FEW|SCT|BKN|OVC)(\d{3})\b/g) || []
+
   const cloudLayers = cloudMatches.map((match) => {
-    const [, type, height] = match.match(/\b(FEW|SCT|BKN|OVC)(\d{3})\b/) || []
-    return { type, ft: parseInt(height) * 100 }
+    const [, type, height] =
+      match.match(/\b(FEW|SCT|BKN|OVC)(\d{3})\b/) || []
+
+    return {
+      type,
+      ft: parseInt(height) * 100,
+    }
   })
-  const ceilingLayers = cloudLayers.filter((layer) => layer.type === "BKN" || layer.type === "OVC")
+
+  const ceilingLayers = cloudLayers.filter(
+    (layer) => layer.type === "BKN" || layer.type === "OVC"
+  )
+
   if (ceilingLayers.length > 0) {
     ceil = Math.min(...ceilingLayers.map((layer) => layer.ft))
   } else if (cloudLayers.length > 0) {
@@ -49,18 +94,23 @@ const parseFlightCategory = (raw: string) => {
   }
 
   let vis: number | null = null
-  if (text.includes("CAVOK")) vis = 10
-  else {
+
+  if (text.includes("CAVOK")) {
+    vis = 10
+  } else {
     const smMatch = text.match(/\b(\d+(?:\.\d+)?)SM\b/)
     const meterMatch = text.match(/\b(\d{4})\b/)
-    if (smMatch) vis = parseFloat(smMatch[1])
-    else if (meterMatch) {
+
+    if (smMatch) {
+      vis = parseFloat(smMatch[1])
+    } else if (meterMatch) {
       const meters = parseInt(meterMatch[1])
       vis = meters >= 9999 ? 10 : parseFloat((meters / 1609.34).toFixed(1))
     }
   }
 
   let cat = "VFR"
+
   if (ceil !== null && ceil < 500) cat = "LIFR"
   else if (ceil !== null && ceil < 1000) cat = "IFR"
   else if (ceil !== null && ceil < 3000) cat = "MVFR"
@@ -71,26 +121,11 @@ const parseFlightCategory = (raw: string) => {
 }
 
 export default function DispatchPage() {
-  const [state, setState] = useState<
-    DispatchState & {
-      tafDep: string
-      tafArr: string
-      deepLink: string
-      auditReport: string
-      riskAssessment: {
-        checklist: {
-          weatherWithinLimits: boolean
-          crewWithinDutyTime: boolean
-          aircraftServiceable: boolean
-          documentationAvailable: boolean
-          riskMitigationInPlace: boolean
-        }
-        riskNotes: string
-      }
-    }
-  >({
+  const [state, setState] = useState<DispatchPageState>({
     dep: "OPIS",
     arr: "EGLL",
+    alternate: "",
+
     limitXW: 15,
     minCeil: 600,
     minVis: 2,
@@ -113,6 +148,8 @@ export default function DispatchPage() {
 
     metarDep: "—",
     metarArr: "—",
+    metarAlternate: "—",
+
     provDep: "—",
     provArr: "—",
     notam: "—",
@@ -139,6 +176,8 @@ export default function DispatchPage() {
 
     tafDep: "—",
     tafArr: "—",
+    tafAlternate: "—",
+
     auditReport: "—",
 
     riskAssessment: {
@@ -153,15 +192,30 @@ export default function DispatchPage() {
     },
   })
 
-  const [currentAirportData, setCurrentAirportData] = useState<AirportData | undefined>()
-  const [pirepData, setPirepData] = useState<PirepData | null>(null)
-  const [collaborationData, setCollaborationData] = useState<CollaborationAuditData>({
-    deepLink: "—",
-    auditReport: "—",
-    generatedAt: new Date().toLocaleString(),
-  })
+  const [currentAirportData, setCurrentAirportData] =
+    useState<AirportData | undefined>()
 
-  const { dep, arr, limitXW, metarDep, metarArr, rwDep, rwArr } = state
+  const [pirepData, setPirepData] = useState<PirepData | null>(null)
+
+  const [collaborationData, setCollaborationData] =
+    useState<CollaborationAuditData>({
+      deepLink: "—",
+      auditReport: "—",
+      generatedAt: new Date().toLocaleString(),
+    })
+
+  const {
+    dep,
+    arr,
+    alternate,
+    limitXW,
+    metarDep,
+    metarArr,
+    metarAlternate,
+    rwDep,
+    rwArr,
+  } = state
+
   const [exporting, setExporting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -211,7 +265,14 @@ export default function DispatchPage() {
   )
 
   const handleMetarUpdate = useCallback(
-    (newMetarData: { metarDep: string; metarArr: string; dep?: string; arr?: string }) => {
+    (newMetarData: {
+      metarDep: string
+      metarArr: string
+      metarAlternate: string
+      dep?: string
+      arr?: string
+      alternate?: string
+    }) => {
       setState((prev) => ({
         ...prev,
         ...newMetarData,
@@ -222,7 +283,14 @@ export default function DispatchPage() {
   )
 
   const handleTafUpdate = useCallback(
-    (newTafData: { tafDep: string; tafArr: string; dep?: string; arr?: string }) => {
+    (newTafData: {
+      tafDep: string
+      tafArr: string
+      tafAlternate: string
+      dep?: string
+      arr?: string
+      alternate?: string
+    }) => {
       setState((prev) => ({
         ...prev,
         ...newTafData,
@@ -232,17 +300,24 @@ export default function DispatchPage() {
     []
   )
 
-  const handleAirportDataUpdate = useCallback((airportData: AirportData | undefined) => {
-    console.log("🏢 Airport data updated:", airportData)
-    setCurrentAirportData(airportData)
-  }, [])
+  const handleAirportDataUpdate = useCallback(
+    (airportData: AirportData | undefined) => {
+      console.log("🏢 Airport data updated:", airportData)
+      setCurrentAirportData(airportData)
+    },
+    []
+  )
 
   const handlePirepUpdate = useCallback((pirepData: PirepData | null) => {
     console.log("📝 PIREP data updated:", pirepData)
+
     setPirepData(pirepData)
+
     setState((prev) => ({
       ...prev,
-      status: pirepData ? "PIREP data parsed successfully" : "PIREP data cleared",
+      status: pirepData
+        ? "PIREP data parsed successfully"
+        : "PIREP data cleared",
     }))
   }, [])
 
@@ -253,6 +328,7 @@ export default function DispatchPage() {
         ...newData,
         generatedAt: new Date().toLocaleString(),
       }))
+
       console.log("🔗 Collaboration data updated:", newData)
     },
     []
@@ -290,8 +366,10 @@ export default function DispatchPage() {
       const hasValidData =
         (state.metarDep && state.metarDep !== "—") ||
         (state.metarArr && state.metarArr !== "—") ||
+        (state.metarAlternate && state.metarAlternate !== "—") ||
         (state.tafDep && state.tafDep !== "—") ||
         (state.tafArr && state.tafArr !== "—") ||
+        (state.tafAlternate && state.tafAlternate !== "—") ||
         pirepData ||
         fuelData ||
         state.notesDep ||
@@ -303,17 +381,27 @@ export default function DispatchPage() {
 
       if (!hasValidData) {
         console.warn("⚠️ No valid data available for export")
-        setState((prev) => ({ ...prev, status: "No data available for export" }))
+
+        setState((prev) => ({
+          ...prev,
+          status: "No data available for export",
+        }))
+
         return
       }
 
       const weatherData = {
         dep: state.dep,
         arr: state.arr,
+        alternate: state.alternate,
+
         metarDep: state.metarDep,
         metarArr: state.metarArr,
+        metarAlternate: state.metarAlternate,
+
         tafDep: state.tafDep,
         tafArr: state.tafArr,
+        tafAlternate: state.tafAlternate,
       }
 
       await exportWeatherPDF(
@@ -326,10 +414,16 @@ export default function DispatchPage() {
         riskAssessmentData
       )
 
-      setState((prev) => ({ ...prev, status: "✓ Complete PDF exported successfully" }))
+      setState((prev) => ({
+        ...prev,
+        status: "✓ Complete PDF exported successfully",
+      }))
     } catch (error: unknown) {
       console.error("❌ Export failed with details:", error)
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred"
+
       setState((prev) => ({
         ...prev,
         status: `✗ PDF export failed: ${errorMessage}`,
@@ -340,10 +434,13 @@ export default function DispatchPage() {
   }, [
     state.dep,
     state.arr,
+    state.alternate,
     state.metarDep,
     state.metarArr,
+    state.metarAlternate,
     state.tafDep,
     state.tafArr,
+    state.tafAlternate,
     state.notesDep,
     state.notesArr,
     state.riskAssessment.checklist,
@@ -355,23 +452,30 @@ export default function DispatchPage() {
   ])
 
   const checkMinima = useCallback(
-    (metar: string, side: "dep" | "arr") => {
+    (metar: string, side: "dep" | "arr" | "alternate") => {
       if (!metar || metar === "—") return `${side.toUpperCase()} minima: —`
+
       const flightCat = parseFlightCategory(metar)
       const { ceil, vis } = flightCat
       const needCeil = state.minCeil
       const needVis = state.minVis
+
       let ok = true
       let msg = flightCat.cat
+
       if (ceil !== null && ceil < needCeil) {
         ok = false
         msg += ` • ceiling ${ceil}<${needCeil}`
       }
+
       if (vis !== null && vis < needVis) {
         ok = false
         msg += ` • vis ${vis}<${needVis}`
       }
-      return `${side.toUpperCase()} ${ok ? "meets minima" : "BELOW MINIMA"} (${msg})`
+
+      return `${side.toUpperCase()} ${
+        ok ? "meets minima" : "BELOW MINIMA"
+      } (${msg})`
     },
     [state.minCeil, state.minVis]
   )
@@ -383,14 +487,23 @@ export default function DispatchPage() {
     if (state.dep && state.metarDep && state.metarDep !== "—") {
       const wind = parseWind(state.metarDep)
       const airport = AIRPORT_DATABASE[state.dep.toUpperCase()]
+
       if (airport?.runways && wind.spd !== null) {
         airport.runways.forEach((rwy) => {
           const c1 = calculateWindComponents(rwy.hdgUp, wind.dir, wind.spd)
-          const c2 = calculateWindComponents((rwy.hdgUp + 180) % 360, wind.dir, wind.spd)
-          if (c1.cv !== null && c1.cv > limit)
+          const c2 = calculateWindComponents(
+            (rwy.hdgUp + 180) % 360,
+            wind.dir,
+            wind.spd
+          )
+
+          if (c1.cv !== null && c1.cv > limit) {
             items.push(`${state.dep} RWY ${rwy.up} XW ${c1.cv}>${limit}`)
-          if (c2.cv !== null && c2.cv > limit)
+          }
+
+          if (c2.cv !== null && c2.cv > limit) {
             items.push(`${state.dep} RWY ${rwy.down} XW ${c2.cv}>${limit}`)
+          }
         })
       }
     }
@@ -398,14 +511,55 @@ export default function DispatchPage() {
     if (state.arr && state.metarArr && state.metarArr !== "—") {
       const wind = parseWind(state.metarArr)
       const airport = AIRPORT_DATABASE[state.arr.toUpperCase()]
+
       if (airport?.runways && wind.spd !== null) {
         airport.runways.forEach((rwy) => {
           const c1 = calculateWindComponents(rwy.hdgUp, wind.dir, wind.spd)
-          const c2 = calculateWindComponents((rwy.hdgUp + 180) % 360, wind.dir, wind.spd)
-          if (c1.cv !== null && c1.cv > limit)
+          const c2 = calculateWindComponents(
+            (rwy.hdgUp + 180) % 360,
+            wind.dir,
+            wind.spd
+          )
+
+          if (c1.cv !== null && c1.cv > limit) {
             items.push(`${state.arr} RWY ${rwy.up} XW ${c1.cv}>${limit}`)
-          if (c2.cv !== null && c2.cv > limit)
+          }
+
+          if (c2.cv !== null && c2.cv > limit) {
             items.push(`${state.arr} RWY ${rwy.down} XW ${c2.cv}>${limit}`)
+          }
+        })
+      }
+    }
+
+    if (
+      state.alternate &&
+      state.metarAlternate &&
+      state.metarAlternate !== "—"
+    ) {
+      const wind = parseWind(state.metarAlternate)
+      const airport = AIRPORT_DATABASE[state.alternate.toUpperCase()]
+
+      if (airport?.runways && wind.spd !== null) {
+        airport.runways.forEach((rwy) => {
+          const c1 = calculateWindComponents(rwy.hdgUp, wind.dir, wind.spd)
+          const c2 = calculateWindComponents(
+            (rwy.hdgUp + 180) % 360,
+            wind.dir,
+            wind.spd
+          )
+
+          if (c1.cv !== null && c1.cv > limit) {
+            items.push(
+              `${state.alternate} RWY ${rwy.up} XW ${c1.cv}>${limit}`
+            )
+          }
+
+          if (c2.cv !== null && c2.cv > limit) {
+            items.push(
+              `${state.alternate} RWY ${rwy.down} XW ${c2.cv}>${limit}`
+            )
+          }
         })
       }
     }
@@ -414,65 +568,100 @@ export default function DispatchPage() {
       if (alt.full && alt.full !== "—") {
         const wind = parseWind(alt.full)
         const airport = AIRPORT_DATABASE[alt.icao]
+
         if (airport?.runways && wind.spd !== null) {
           airport.runways.forEach((rwy) => {
             const c1 = calculateWindComponents(rwy.hdgUp, wind.dir, wind.spd)
-            const c2 = calculateWindComponents((rwy.hdgUp + 180) % 360, wind.dir, wind.spd)
-            if (c1.cv !== null && c1.cv > limit)
+            const c2 = calculateWindComponents(
+              (rwy.hdgUp + 180) % 360,
+              wind.dir,
+              wind.spd
+            )
+
+            if (c1.cv !== null && c1.cv > limit) {
               items.push(`${alt.icao} RWY ${rwy.up} XW ${c1.cv}>${limit}`)
-            if (c2.cv !== null && c2.cv > limit)
+            }
+
+            if (c2.cv !== null && c2.cv > limit) {
               items.push(`${alt.icao} RWY ${rwy.down} XW ${c2.cv}>${limit}`)
+            }
           })
         }
       }
     })
 
-    if (items.length)
-      return `Crosswind watchlist: ${items.slice(0, 3).join(" | ")}${items.length > 3 ? " …" : ""}`
+    if (items.length) {
+      return `Crosswind watchlist: ${items.slice(0, 3).join(" | ")}${
+        items.length > 3 ? " …" : ""
+      }`
+    }
+
     return "Crosswind watchlist: clear"
-  }, [state.dep, state.arr, state.metarDep, state.metarArr, state.limitXW, state.altGrid])
+  }, [
+    state.dep,
+    state.arr,
+    state.alternate,
+    state.metarDep,
+    state.metarArr,
+    state.metarAlternate,
+    state.limitXW,
+    state.altGrid,
+  ])
 
   const tokenTriggers = useCallback((raw: string) => {
     if (!raw || raw === "—") return "vis: — • ceil: —"
+
     const s = raw
     const visTok = (s.match(/\b(\d{4}|\d{1,2}SM|CAVOK)\b/) || [])[0] || "—"
     const ceilTok = (s.match(/\b(FEW|SCT|BKN|OVC)\d{3}\b/) || [])[0] || "—"
+
     return `vis: ${visTok} • ceil: ${ceilTok}`
   }, [])
 
   const chooseBestRunway = useCallback(
     (icao: string, windDeg: number | null, windKt: number | null) => {
       const apt = AIRPORT_DATABASE[icao]
+
       if (!apt?.runways?.length) return null
+
       type BestRunway = {
         id: string
         deg: number
         sc: { s: number; c: ReturnType<typeof calculateWindComponents> }
       }
+
       let best: BestRunway | null = null
       let bestScore = -1
+
       const score = (runwayDeg: number) => {
         const c = calculateWindComponents(runwayDeg, windDeg, windKt)
         let s = 100
+
         if (c.hv !== null && c.hv < 0) s -= Math.min(30, Math.abs(c.hv))
         if (c.cv !== null) s -= Math.max(0, c.cv - (limitXW || 15))
         if (c.hv !== null && c.hv > 0) s += Math.min(10, Math.floor(c.hv / 2))
+
         return { s, c }
       }
+
       for (const r of apt.runways) {
         const d1 = r.hdgUp % 360
         const d2 = (r.hdgUp + 180) % 360
-        const a = score(d1),
-          b = score(d2)
+
+        const a = score(d1)
+        const b = score(d2)
+
         if (a.s > bestScore) {
           bestScore = a.s
           best = { id: r.up, deg: d1, sc: a }
         }
+
         if (b.s > bestScore) {
           bestScore = b.s
           best = { id: r.down, deg: d2, sc: b }
         }
       }
+
       return best
     },
     [limitXW]
@@ -483,13 +672,17 @@ export default function DispatchPage() {
       const icao = (side === "dep" ? dep : arr).toUpperCase().trim()
       const raw = side === "dep" ? metarDep : metarArr
       const rwUser = +(side === "dep" ? rwDep : rwArr || "0")
+
       if (!icao || !raw || raw === "—") return
+
       const w = parseWind(raw)
       const best = chooseBestRunway(icao, w.dir, w.spd)
       const usedDeg = !isNaN(rwUser) ? rwUser : best ? best.deg : Number.NaN
       const c = calculateWindComponents(usedDeg, w.dir, w.spd)
       const trig = tokenTriggers(raw)
-      const updates: Partial<DispatchState & { tafDep: string; tafArr: string }> = {}
+
+      const updates: Partial<DispatchPageState> = {}
+
       if (side === "dep") {
         updates.cmpDep = c.head + " • XW " + c.cross
         updates.bestDep = best
@@ -507,58 +700,105 @@ export default function DispatchPage() {
           : `User ${rwUser}°`
         updates.trigArr = `Triggers: ${trig}`
       }
-      setState((prev) => ({ ...prev, ...updates }))
+
+      setState((prev) => ({
+        ...prev,
+        ...updates,
+      }))
     },
-    [dep, arr, metarDep, metarArr, rwDep, rwArr, chooseBestRunway, tokenTriggers]
+    [
+      dep,
+      arr,
+      metarDep,
+      metarArr,
+      rwDep,
+      rwArr,
+      chooseBestRunway,
+      tokenTriggers,
+    ]
   )
 
   const refresh = useCallback(async () => {
     if (!state.dep || !state.arr) {
-      setState((prev) => ({ ...prev, status: "Enter both dep & arr" }))
+      setState((prev) => ({
+        ...prev,
+        status: "Enter both dep & arr",
+      }))
+
       return
     }
 
     if (refreshing) return
 
     setRefreshing(true)
+
     setState((prev) => ({
       ...prev,
       status: "Fetching…",
+
       metarDep: "…",
       metarArr: "…",
+      metarAlternate: state.alternate ? "…" : "—",
+
       tafDep: "…",
       tafArr: "…",
+      tafAlternate: state.alternate ? "…" : "—",
     }))
 
     try {
       const api = dispatchAPI as DispatchAPIWithTaf
       const networkOk = await api.checkConnection()
+
       setState((prev) => ({
         ...prev,
         networkStatus: networkOk ? "Network: ok" : "Network: unknown",
       }))
 
       const hasGetTaf = typeof api.getTaf === "function"
-      const [metarDepData, metarArrData, tafDepData, tafArrData] = await Promise.all([
+
+      const [
+        metarDepData,
+        metarArrData,
+        metarAlternateData,
+        tafDepData,
+        tafArrData,
+        tafAlternateData,
+      ] = await Promise.all([
         api.getMetar(state.dep),
         api.getMetar(state.arr),
+        state.alternate
+          ? api.getMetar(state.alternate)
+          : Promise.resolve(null),
+
         hasGetTaf ? api.getTaf!(state.dep) : Promise.resolve(null),
         hasGetTaf ? api.getTaf!(state.arr) : Promise.resolve(null),
+        hasGetTaf && state.alternate
+          ? api.getTaf!(state.alternate)
+          : Promise.resolve(null),
       ])
 
       setState((prev) => ({
         ...prev,
+
         metarDep: metarDepData.full,
         metarArr: metarArrData.full,
+        metarAlternate: metarAlternateData?.full ?? "—",
+
         provDep: metarDepData.provider,
         provArr: metarArrData.provider,
+
         tafDep: tafDepData?.full ?? "—",
         tafArr: tafArrData?.full ?? "—",
+        tafAlternate: tafAlternateData?.full ?? "—",
+
         status: "Weather data loaded successfully",
       }))
     } catch (error: unknown) {
       console.error("Refresh failed:", error)
-      const errorMessage = error instanceof Error ? error.message : "Please try again"
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Please try again"
+
       setState((prev) => ({
         ...prev,
         status: `Failed to load data: ${errorMessage}`,
@@ -566,15 +806,23 @@ export default function DispatchPage() {
     } finally {
       setRefreshing(false)
     }
-  }, [state.dep, state.arr, refreshing])
+  }, [state.dep, state.arr, state.alternate, refreshing])
 
   useEffect(() => {
     const minBadgeDep = checkMinima(state.metarDep, "dep")
     const minBadgeArr = checkMinima(state.metarArr, "arr")
     const xwBadge = calculateCrosswindWatchlist()
+
     const depCat = parseFlightCategory(state.metarDep).cat
     const arrCat = parseFlightCategory(state.metarArr).cat
-    const opsBadge = `DEP ${depCat} • ARR ${arrCat}`
+    const altCat =
+      state.alternate && state.metarAlternate
+        ? parseFlightCategory(state.metarAlternate).cat
+        : "—"
+
+    const opsBadge = state.alternate
+      ? `DEP ${depCat} • ARR ${arrCat} • ALT ${altCat}`
+      : `DEP ${depCat} • ARR ${arrCat}`
 
     setState((prev) => {
       if (
@@ -583,25 +831,43 @@ export default function DispatchPage() {
         prev.xwBadge !== xwBadge ||
         prev.opsBadge !== opsBadge
       ) {
-        return { ...prev, minBadgeDep, minBadgeArr, xwBadge, opsBadge }
+        return {
+          ...prev,
+          minBadgeDep,
+          minBadgeArr,
+          xwBadge,
+          opsBadge,
+        }
       }
+
       return prev
     })
-  }, [state.metarDep, state.metarArr, state.minCeil, state.minVis, state.limitXW])
+  }, [
+    state.metarDep,
+    state.metarArr,
+    state.metarAlternate,
+    state.alternate,
+    state.minCeil,
+    state.minVis,
+    state.limitXW,
+    checkMinima,
+    calculateCrosswindWatchlist,
+  ])
 
   useEffect(() => {
-    if (state.metarDep && state.metarDep !== "—" && state.metarDep !== "…")
+    if (state.metarDep && state.metarDep !== "—" && state.metarDep !== "…") {
       fillSideAnalysis("dep")
+    }
   }, [state.metarDep, fillSideAnalysis])
 
   useEffect(() => {
-    if (state.metarArr && state.metarArr !== "—" && state.metarArr !== "…")
+    if (state.metarArr && state.metarArr !== "—" && state.metarArr !== "…") {
       fillSideAnalysis("arr")
+    }
   }, [state.metarArr, fillSideAnalysis])
 
   return (
     <DispatchLayout>
-      {/* Header Section – Animated to match home page style */}
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -613,46 +879,56 @@ export default function DispatchPage() {
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-light leading-[1.1] text-balance">
               Flight Dispatch
             </h1>
+
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl">
-              Real‑time weather, fuel planning, and risk assessment
+              Real-time weather, fuel planning, and risk assessment
             </p>
 
-            {/* Status indicators – dark theme friendly */}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mt-3">
               <p
                 className={
                   state.status.includes("✓")
                     ? "text-emerald-400"
-                    : state.status.includes("✗") || state.status.includes("Failed")
+                    : state.status.includes("✗") ||
+                      state.status.includes("Failed")
                     ? "text-rose-400"
                     : "text-sky-400"
                 }
               >
                 {state.status}
               </p>
+
               {pirepData && (
                 <p className="text-amber-400">✓ PIREP data ready</p>
               )}
+
               {fuelData && (
                 <p className="text-emerald-400">✓ Fuel calculation ready</p>
               )}
+
               {(state.notesDep || state.notesArr) && (
                 <p className="text-blue-400">✓ Operational notes ready</p>
               )}
+
               {(collaborationData.deepLink !== "—" ||
                 collaborationData.auditReport !== "—") && (
                 <p className="text-purple-400">✓ Collaboration data ready</p>
               )}
+
               {state.riskAssessment.riskNotes && (
                 <p className="text-amber-400">✓ Risk assessment ready</p>
               )}
-              {Object.values(state.riskAssessment.checklist).some((value) => value) && (
-                <p className="text-amber-400">✓ Go/No‑Go checklist completed</p>
+
+              {Object.values(state.riskAssessment.checklist).some(
+                (value) => value
+              ) && (
+                <p className="text-amber-400">
+                  ✓ Go/No-Go checklist completed
+                </p>
               )}
             </div>
           </div>
 
-          {/* Action Buttons – using the unified Button component */}
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <Button
               onClick={refresh}
@@ -666,6 +942,7 @@ export default function DispatchPage() {
                   refreshing ? "animate-spin" : "group-hover:rotate-180"
                 }`}
               />
+
               {refreshing ? "Refreshing…" : "Refresh"}
             </Button>
 
@@ -677,19 +954,22 @@ export default function DispatchPage() {
               title="Download Complete Dispatch Report (PDF)"
             >
               <Download className="w-5 h-5 transition-transform duration-[650ms] group-hover:translate-y-0.5" />
+
               {exporting ? "Generating PDF…" : "Download Report"}
             </Button>
           </div>
         </div>
       </motion.div>
 
-      {/* Components – each should be adapted to dark theme internally */}
       <Metar
         currentState={{
           dep: state.dep,
           arr: state.arr,
+          alternate: state.alternate,
+
           metarDep: state.metarDep,
           metarArr: state.metarArr,
+          metarAlternate: state.metarAlternate,
         }}
         onStateUpdate={handleMetarUpdate}
       />
@@ -698,8 +978,11 @@ export default function DispatchPage() {
         currentState={{
           dep: state.dep,
           arr: state.arr,
+          alternate: state.alternate,
+
           tafDep: state.tafDep,
           tafArr: state.tafArr,
+          tafAlternate: state.tafAlternate,
         }}
         onStateUpdate={handleTafUpdate}
       />
@@ -717,18 +1000,42 @@ export default function DispatchPage() {
         altFuel={state.altFuel}
         arrIcao={state.arr}
         fuelPlan={state.fuelPlan}
-        onPolicyChange={(value) => setState((prev) => ({ ...prev, policy: value }))}
-        onTripKgChange={(value) => setState((prev) => ({ ...prev, tripKg: value }))}
-        onTaxiKgChange={(value) => setState((prev) => ({ ...prev, taxiKg: value }))}
-        onHoldFlowChange={(value) => setState((prev) => ({ ...prev, holdFlow: value }))}
-        onCruiseFlowChange={(value) => setState((prev) => ({ ...prev, cruiseFlow: value }))}
-        onGsKtChange={(value) => setState((prev) => ({ ...prev, gsKt: value }))}
-        onContPctChange={(value) => setState((prev) => ({ ...prev, contPct: value }))}
-        onFinalMinChange={(value) => setState((prev) => ({ ...prev, finalMin: value }))}
-        onAltPlanChange={(value) => setState((prev) => ({ ...prev, altPlan: value }))}
-        onAltFuelChange={(value) => setState((prev) => ({ ...prev, altFuel: value }))}
-        onComputeFuel={() => setState((prev) => ({ ...prev, status: "Fuel computed" }))}
-        onCopyFuelPlan={() => setState((prev) => ({ ...prev, status: "Fuel plan copied" }))}
+        onPolicyChange={(value) =>
+          setState((prev) => ({ ...prev, policy: value }))
+        }
+        onTripKgChange={(value) =>
+          setState((prev) => ({ ...prev, tripKg: value }))
+        }
+        onTaxiKgChange={(value) =>
+          setState((prev) => ({ ...prev, taxiKg: value }))
+        }
+        onHoldFlowChange={(value) =>
+          setState((prev) => ({ ...prev, holdFlow: value }))
+        }
+        onCruiseFlowChange={(value) =>
+          setState((prev) => ({ ...prev, cruiseFlow: value }))
+        }
+        onGsKtChange={(value) =>
+          setState((prev) => ({ ...prev, gsKt: value }))
+        }
+        onContPctChange={(value) =>
+          setState((prev) => ({ ...prev, contPct: value }))
+        }
+        onFinalMinChange={(value) =>
+          setState((prev) => ({ ...prev, finalMin: value }))
+        }
+        onAltPlanChange={(value) =>
+          setState((prev) => ({ ...prev, altPlan: value }))
+        }
+        onAltFuelChange={(value) =>
+          setState((prev) => ({ ...prev, altFuel: value }))
+        }
+        onComputeFuel={() =>
+          setState((prev) => ({ ...prev, status: "Fuel computed" }))
+        }
+        onCopyFuelPlan={() =>
+          setState((prev) => ({ ...prev, status: "Fuel plan copied" }))
+        }
       />
 
       <RiskAssessmentCard
@@ -736,7 +1043,10 @@ export default function DispatchPage() {
         onRiskNotesChange={(value) =>
           setState((prev) => ({
             ...prev,
-            riskAssessment: { ...prev.riskAssessment, riskNotes: value },
+            riskAssessment: {
+              ...prev.riskAssessment,
+              riskNotes: value,
+            },
           }))
         }
         checklist={state.riskAssessment.checklist}
@@ -746,9 +1056,15 @@ export default function DispatchPage() {
       <NotesCard
         notesDep={state.notesDep}
         notesArr={state.notesArr}
-        onNotesDepChange={(value) => setState((prev) => ({ ...prev, notesDep: value }))}
-        onNotesArrChange={(value) => setState((prev) => ({ ...prev, notesArr: value }))}
-        onStatusUpdate={(status) => setState((prev) => ({ ...prev, status }))}
+        onNotesDepChange={(value) =>
+          setState((prev) => ({ ...prev, notesDep: value }))
+        }
+        onNotesArrChange={(value) =>
+          setState((prev) => ({ ...prev, notesArr: value }))
+        }
+        onStatusUpdate={(status) =>
+          setState((prev) => ({ ...prev, status }))
+        }
       />
 
       <CollaborationCard
@@ -759,7 +1075,9 @@ export default function DispatchPage() {
         provArr={state.provArr}
         dep={state.dep}
         arr={state.arr}
-        onStatusUpdate={(status) => setState((prev) => ({ ...prev, status }))}
+        onStatusUpdate={(status) =>
+          setState((prev) => ({ ...prev, status }))
+        }
         onCollaborationUpdate={handleCollaborationUpdate}
       />
     </DispatchLayout>
