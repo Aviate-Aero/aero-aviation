@@ -4,7 +4,35 @@ import React from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card/Standard"
-import { Plane, FileText, Database, Bot, ArrowRight, Ticket, RadioTower, CloudAlert, Wind, Radar } from "lucide-react"
+import {
+  Plane,
+  FileText,
+  Database,
+  Bot,
+  ArrowRight,
+  Ticket,
+  RadioTower,
+  CloudAlert,
+  Wind,
+  Radar,
+  Gauge,
+  ClipboardList,
+  MapPinned,
+  Map,
+  Building2,
+  Activity,
+  Rows3,
+  Route,
+  Clock,
+  Ruler,
+  TimerReset,
+  PlaneLanding,
+  PlaneTakeoff,
+  Navigation,
+  Satellite,
+  ShieldAlert,
+  CloudSun,
+} from "lucide-react";
 import { useAuth } from "./auth-context"
 
 interface AppCardProps {
@@ -65,143 +93,169 @@ function AppCard({ title, description, icon, route, delay }: AppCardProps) {
 export default function AppSelector() {
   useAuth()
 
-  const apps = [
-    {
-      title: "Flight Performance",
-      description:
-        "Compute optimal aircraft performance, generate trim sheets, and determine precise fuel loads",
-      icon: <Database className="h-6 w-6" />,
-      route: "/flight-intel/flightdata",
-    },
-    {
-      title: "Dispatch",
-      description:
-        "Review and manage flight plans, coordinate operations, and ensure regulatory compliance",
-      icon: <FileText className="h-6 w-6" />,
-      route: "/flight-intel/dispatch",
-    },
-    {
-      title: "Flight Tracker",
-      description: "Track flights and Airport information in real-time.",
-      icon: <Plane className="h-6 w-6" />,
-      route: "/flight-intel/flight-tracker",
-    },
-    {
-      title: "Aviation Intelligence",
-      description:
-        "Generate AI-powered aviation reports with real-time web search — incidents, NOTAMs, airspace closures, and more.",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/aviation-report",
-    },
-    {
-      title: "Arrivals & Departures",
-      description: "Check flight arrivals and departures of any airport worldwide",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/flight-destinations",
-    },
-    {
-      title: "Airport Information",
-      description: "Detailed information of any airport all over the globe",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/airport-info",
-    },
-    {
-      title: "Flight Status",
-      description: "Detailed flight status information for airline operations",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/flight-status",
-    },
-    {
-      title: "Airline Fleet",
-      description: "Check the aircraft inventory of any airline",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/airline-fleet",
-    },
-    {
-      title: "Airport Distance",
-      description: "Check the aprrox distance between two airports",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/airport-distance",
-    },
-    {
-      title: "Airport Delays",
-      description: "Check the airport flight delays, present or historical",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/airport-delays",
-    },
-    {
-      title: "Airport Runways",
-      description: "Check the information related to airport runways",
-      icon: <Bot className="h-6 w-6" />,
-      route: "/flight-intel/airport-runways",
-    },
-    {
-      title: "Aircraft Performance",
-      description: "View aircraft performance data including range, cruise speed, service ceiling, MTOW, dimensions, and passenger capacity",
-      icon: <Plane className="h-6 w-6" />,
-      route: "/flight-intel/aircraft-performance",
-    },
-    {
-      title: "Ticket Search",
-      description: "Search ticket options by route, travel date, price, duration, stops, and airline legs",
-      icon: <Ticket className="h-6 w-6" />,
-      route: "/flight-intel/ticket-search",
-    },
-    {
-      title: "NOTAM Search",
-      description: "Search airport NOTAMs by ICAO code, including operational notices, effective times, expiry times, and raw NOTAM text",
-      icon: <RadioTower className="h-6 w-6" />,
-      route: "/flight-intel/notams",
-    },
-    {
-      title: "FAA Airport Delays",
-      description: "Check FAA airport delay alerts including ground delays, ground stops, closures, and airspace flow programs",
-      icon: <CloudAlert className="h-6 w-6" />,
-      route: "/flight-intel/delays/airport-delays",
-    },
-     {
-      title: "FAA Delays",
-      description: "Check FAA airport delay alerts including ground delays, ground stops, closures, and airspace flow programs",
-      icon: <CloudAlert className="h-6 w-6" />,
-      route: "/flight-intel/delays/faa-delays",
-    },
-    {
-      title: "PIREPs",
-      description: "View recent pilot reports including turbulence, altitude, aircraft type, location, remarks, and raw PIREP text",
-      icon: <RadioTower className="h-6 w-6" />,
-      route: "/flight-intel/pireps",
-    },
-    {
-      title: "Winds Aloft",
-      description: "View winds aloft forecast data by altitude, station, forecast hour, wind direction, speed, and raw forecast groups",
-      icon: <Wind className="h-6 w-6" />,
-      route: "/flight-intel/winds-aloft",
-    },
-    {
-      title: "Airport Charts",
-      description:"View airport diagrams, SID, STAR, approach, and other published procedure charts by ICAO code",
-      icon: <FileText className="h-6 w-6" />,
-      route: "/flight-intel/aerodrome-charts",  
-    },
-    {
-      title: "ADS-B Statistics",
-      description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
-      icon: <Radar className="h-6 w-6" />,
-      route: "/flight-intel/adsb-tracking",
-    },
-    {
-      title: "Airport Routes",
-      description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
-      icon: <Radar className="h-6 w-6" />,
-      route: "/flight-intel/airport-routes",
-    },
-        {
-      title: "FAA LADD",
-      description: "View ADS-B aircraft statistics and feed-level summaries from Skylink",
-      icon: <Radar className="h-6 w-6" />,
-      route: "/flight-intel/faa-ladd",
-    },
-  ]
+const apps = [
+  {
+    title: "Flight Performance",
+    description:
+      "Calculate aircraft performance, trim data, and fuel loads with precision.",
+    icon: <Gauge className="h-6 w-6" />,
+    route: "/flight-intel/flightdata",
+  },
+  {
+    title: "Dispatch",
+    description:
+      "Plan, review, and manage flight operations from one dispatch workspace.",
+    icon: <ClipboardList className="h-6 w-6" />,
+    route: "/flight-intel/dispatch",
+  },
+  {
+    title: "Flight Tracker",
+    description:
+      "Track live flights and airport activity with real-time aviation data.",
+    icon: <Plane className="h-6 w-6" />,
+    route: "/flight-intel/flight-tracker",
+  },
+  {
+    title: "Aviation Intelligence",
+    description:
+      "Generate AI-powered aviation reports on incidents, NOTAMs, closures, and more.",
+    icon: <Bot className="h-6 w-6" />,
+    route: "/flight-intel/aviation-report",
+  },
+  {
+    title: "Arrivals & Departures",
+    description:
+      "View live arrival and departure boards for airports worldwide.",
+    icon: <PlaneLanding className="h-6 w-6" />,
+    route: "/flight-intel/flight-destinations",
+  },
+  {
+    title: "Airport Information",
+    description:
+      "Explore essential airport details, codes, location, and operational data.",
+    icon: <Building2 className="h-6 w-6" />,
+    route: "/flight-intel/airport-info",
+  },
+  {
+    title: "Flight Status",
+    description:
+      "Check live flight status, schedules, delays, and airline updates.",
+    icon: <Activity className="h-6 w-6" />,
+    route: "/flight-intel/flight-status",
+  },
+  {
+    title: "Airline Fleet",
+    description:
+      "View aircraft fleets, registrations, and operator inventory by airline.",
+    icon: <Rows3 className="h-6 w-6" />,
+    route: "/flight-intel/airline-fleet",
+  },
+  {
+    title: "Airport Distance",
+    description:
+      "Calculate approximate distance between two airports instantly.",
+    icon: <Ruler className="h-6 w-6" />,
+    route: "/flight-intel/airport-distance",
+  },
+  {
+    title: "Airport Delays",
+    description:
+      "Monitor current and historical airport delays by location.",
+    icon: <Clock className="h-6 w-6" />,
+    route: "/flight-intel/airport-delays",
+  },
+  {
+    title: "Airport Runways",
+    description:
+      "View runway lengths, headings, surfaces, and airport runway details.",
+    icon: <Navigation className="h-6 w-6" />,
+    route: "/flight-intel/airport-runways",
+  },
+  {
+    title: "Aircraft Performance",
+    description:
+      "Compare aircraft range, speed, ceiling, MTOW, size, and capacity.",
+    icon: <PlaneTakeoff className="h-6 w-6" />,
+    route: "/flight-intel/aircraft-performance",
+  },
+  {
+    title: "Ticket Search",
+    description:
+      "Find flight tickets by route, date, price, duration, stops, and airline.",
+    icon: <Ticket className="h-6 w-6" />,
+    route: "/flight-intel/ticket-search",
+  },
+  {
+    title: "NOTAM Search",
+    description:
+      "Search airport NOTAMs with validity times, notices, and raw text.",
+    icon: <RadioTower className="h-6 w-6" />,
+    route: "/flight-intel/notams",
+  },
+  {
+    title: "FAA Airport Delays",
+    description:
+      "Check FAA ground delays, stops, closures, and airport flow alerts.",
+    icon: <CloudAlert className="h-6 w-6" />,
+    route: "/flight-intel/delays/airport-delays",
+  },
+  {
+    title: "FAA Delays",
+    description:
+      "Track nationwide FAA delay programs, ground stops, and airspace alerts.",
+    icon: <TimerReset className="h-6 w-6" />,
+    route: "/flight-intel/delays/faa-delays",
+  },
+  {
+    title: "PIREPs",
+    description:
+      "View pilot reports for turbulence, icing, altitude, aircraft type, and remarks.",
+    icon: <RadioTower className="h-6 w-6" />,
+    route: "/flight-intel/pireps",
+  },
+  {
+    title: "Winds Aloft",
+    description:
+      "Check winds aloft forecasts by station, altitude, time, speed, and direction.",
+    icon: <Wind className="h-6 w-6" />,
+    route: "/flight-intel/winds-aloft",
+  },
+  {
+    title: "Airport Charts",
+    description:
+      "Access airport diagrams, SID, STAR, approach, and procedure charts.",
+    icon: <Map className="h-6 w-6" />,
+    route: "/flight-intel/aerodrome-charts",
+  },
+  {
+    title: "ADS-B Statistics",
+    description:
+      "View ADS-B aircraft counts, tracking summaries, and feed-level statistics.",
+    icon: <Radar className="h-6 w-6" />,
+    route: "/flight-intel/adsb-tracking",
+  },
+  {
+    title: "Airport Routes",
+    description:
+      "Explore airline routes, destinations, and airport connectivity data.",
+    icon: <Route className="h-6 w-6" />,
+    route: "/flight-intel/airport-routes",
+  },
+  {
+    title: "FAA LADD",
+    description:
+      "Check aircraft privacy and FAA LADD visibility restriction data.",
+    icon: <ShieldAlert className="h-6 w-6" />,
+    route: "/flight-intel/faa-ladd",
+  },
+  {
+    title: "AIRMET/SIGMET",
+    description:
+      "View active aviation weather advisories for hazards, turbulence, icing, and IFR.",
+    icon: <CloudSun className="h-6 w-6" />,
+    route: "/flight-intel/airmet",
+  },
+];
 
   const containerVariants = {
     hidden: { opacity: 0 },
