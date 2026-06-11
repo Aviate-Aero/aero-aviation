@@ -255,6 +255,13 @@ const apps = [
     icon: <CloudSun className="h-6 w-6" />,
     route: "/flight-intel/airmet",
   },
+  {
+    title: "Weather",
+    description:
+      "Check the current weather live on maps, including temperature, wind, pressure, etc.",
+    icon: <CloudSun className="h-6 w-6" />,
+    route: "/flight-intel/weather-maps",
+  },
 ];
 
   const containerVariants = {
