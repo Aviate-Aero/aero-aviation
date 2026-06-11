@@ -1,17 +1,42 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  useMap,
+  ZoomControl,
+} from 'react-leaflet';
 import { divIcon, LatLngBounds } from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Plane, Navigation } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import {
+  Plane,
+  Navigation,
+  Cloud,
+  CloudRain,
+  Thermometer,
+  Wind,
+  Gauge,
+  SlidersHorizontal,
+  Layers,
+  X,
+  type LucideProps,
+} from 'lucide-react';
+
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
+// Fix default Leaflet marker icons in Next.js
 // @ts-ignore
 delete L.Icon.Default.prototype._getIconUrl;
+
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x.src,
   iconUrl: markerIcon.src,
@@ -66,6 +91,52 @@ interface FlightMapProps {
   height?: string;
 }
 
+type WeatherLayer = {
+  id: string;
+  label: string;
+  description: string;
+  opacity: number;
+  icon: ComponentType<LucideProps>;
+};
+
+const weatherLayers: WeatherLayer[] = [
+  {
+    id: 'clouds_new',
+    label: 'Clouds',
+    description: 'Live cloud coverage',
+    opacity: 0.6,
+    icon: Cloud,
+  },
+  {
+    id: 'precipitation_new',
+    label: 'Precipitation',
+    description: 'Rain and snowfall intensity',
+    opacity: 0.65,
+    icon: CloudRain,
+  },
+  {
+    id: 'temp_new',
+    label: 'Temperature',
+    description: 'Surface temperature overlay',
+    opacity: 0.55,
+    icon: Thermometer,
+  },
+  {
+    id: 'wind_new',
+    label: 'Wind',
+    description: 'Wind speed overlay',
+    opacity: 0.55,
+    icon: Wind,
+  },
+  {
+    id: 'pressure_new',
+    label: 'Pressure',
+    description: 'Sea level pressure',
+    opacity: 0.55,
+    icon: Gauge,
+  },
+];
+
 function MapController({ flight }: { flight?: Flight | null }) {
   const map = useMap();
 
@@ -83,12 +154,20 @@ function FitBoundsToTracks({ tracks }: { tracks: TrackPoint[] }) {
 
   useEffect(() => {
     if (tracks.length > 0) {
-      const validPoints = tracks.filter(t => t.lat != null && t.lon != null);
+      const validPoints = tracks.filter(
+        (t) =>
+          t.lat != null &&
+          t.lon != null &&
+          Math.abs(t.lat) <= 90 &&
+          Math.abs(t.lon) <= 180
+      );
+
       if (validPoints.length === 0) return;
 
       const bounds = new LatLngBounds(
-        validPoints.map(t => [t.lat, t.lon] as [number, number])
+        validPoints.map((t) => [t.lat, t.lon] as [number, number])
       );
+
       map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [tracks, map]);
@@ -96,13 +175,186 @@ function FitBoundsToTracks({ tracks }: { tracks: TrackPoint[] }) {
   return null;
 }
 
-const createPlaneIcon = (heading: number = 0, isOnGround: boolean = false, isSelected: boolean = false) => {
+type WeatherControlProps = {
+  weatherEnabled: boolean;
+  weatherPanelOpen: boolean;
+  activeWeatherLayer: WeatherLayer;
+  weatherOpacity: number;
+  setWeatherEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setWeatherPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setWeatherOpacity: React.Dispatch<React.SetStateAction<number>>;
+  handleWeatherLayerChange: (layer: WeatherLayer) => void;
+};
+
+function WeatherControl({
+  weatherEnabled,
+  weatherPanelOpen,
+  activeWeatherLayer,
+  weatherOpacity,
+  setWeatherEnabled,
+  setWeatherPanelOpen,
+  setWeatherOpacity,
+  handleWeatherLayerChange,
+}: WeatherControlProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    const controlContainer = document.querySelector(
+      '.weather-leaflet-control'
+    ) as HTMLElement | null;
+
+    if (!controlContainer) return;
+
+    L.DomEvent.disableClickPropagation(controlContainer);
+    L.DomEvent.disableScrollPropagation(controlContainer);
+  }, [map, weatherPanelOpen, weatherEnabled]);
+
+  return (
+  <div className="leaflet-top leaflet-left">
+    <div className="leaflet-control weather-leaflet-control ml-4 mt-4">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (!weatherEnabled) {
+            setWeatherEnabled(true);
+            setWeatherPanelOpen(true);
+          } else {
+            setWeatherPanelOpen((prev) => !prev);
+          }
+        }}
+        className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-black/70 px-3 py-2.5 text-sm font-medium text-white shadow-2xl shadow-black/50 backdrop-blur-md transition hover:border-sky-400/50"
+      >
+        <Layers className="h-4 w-4 text-sky-400" />
+        <span>{weatherEnabled ? activeWeatherLayer.label : 'Weather'}</span>
+      </button>
+
+      {weatherEnabled && weatherPanelOpen && (
+        <div className="mt-3 flex max-h-[calc(100vh-180px)] w-[200px] flex-col gap-3 overflow-y-auto rounded-2xl border border-zinc-800 bg-black/70 p-4 shadow-2xl shadow-black/50 backdrop-blur-md sm:w-[230px]">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                Weather Layers
+              </h2>
+              <p className="mt-1 text-[11px] leading-4 text-zinc-400">
+                Select a layer to overlay on the map.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setWeatherPanelOpen(false);
+              }}
+              aria-label="Hide weather panel"
+              className="-mr-1 -mt-1 shrink-0 rounded-md p-1 text-zinc-400 transition-colors hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {weatherLayers.map((layer) => {
+              const Icon = layer.icon;
+              const isActive = activeWeatherLayer.id === layer.id;
+
+              return (
+                <button
+                  key={layer.id}
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleWeatherLayerChange(layer);
+                  }}
+                  className={[
+                    'group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-300',
+                    isActive
+                      ? 'border-sky-400/70 bg-sky-400/15 shadow-[0_0_24px_rgba(56,189,248,0.12)]'
+                      : 'border-zinc-800 bg-zinc-950/70 hover:border-sky-400/40 hover:bg-sky-400/5',
+                  ].join(' ')}
+                >
+                  <div
+                    className={[
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-all duration-300',
+                      isActive
+                        ? 'border-sky-400/60 bg-sky-400/15 text-sky-400'
+                        : 'border-zinc-800 bg-black text-zinc-500 group-hover:text-sky-400',
+                    ].join(' ')}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+
+                  <div>
+                    <span
+                      className={[
+                        'block text-sm font-medium transition-colors duration-300',
+                        isActive ? 'text-white' : 'text-zinc-200',
+                      ].join(' ')}
+                    >
+                      {layer.label}
+                    </span>
+
+                    <span className="block text-[10px] leading-3 text-zinc-500">
+                      {layer.description}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/70 p-3">
+            <div className="mb-3 flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-sky-400" />
+              <h3 className="text-xs font-semibold text-white">
+                Overlay Opacity
+              </h3>
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={weatherOpacity}
+              onChange={(event) =>
+                setWeatherOpacity(Number(event.target.value))
+              }
+              className="w-full accent-sky-400"
+            />
+
+            <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+              <span>Min</span>
+              <span className="rounded-full bg-sky-400/20 px-2 py-0.5 text-sky-300">
+                {Math.round(weatherOpacity * 100)}%
+              </span>
+              <span>Max</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+);
+}
+
+const createPlaneIcon = (
+  heading: number = 0,
+  isOnGround: boolean = false,
+  isSelected: boolean = false
+) => {
   const rotation = heading;
+
   const bgColor = isSelected
     ? '#f59e0b'
     : isOnGround
-    ? '#6b7280'
-    : '#3b82f6';
+      ? '#6b7280'
+      : '#3b82f6';
 
   const iconHtml = `
     <div style="
@@ -135,7 +387,9 @@ const createPlaneIcon = (heading: number = 0, isOnGround: boolean = false, isSel
         </div>
       </div>
 
-      ${!isOnGround && !isSelected ? `
+      ${
+        !isOnGround && !isSelected
+          ? `
         <div class="plane-ping"></div>
         <style>
           .plane-ping {
@@ -152,13 +406,21 @@ const createPlaneIcon = (heading: number = 0, isOnGround: boolean = false, isSel
             opacity: 0.5;
             pointer-events: none;
           }
+
           @keyframes plane-ping-anim {
-            75%, 100% { transform: scale(2.5); opacity: 0; }
+            75%, 100% {
+              transform: scale(2.5);
+              opacity: 0;
+            }
           }
         </style>
-      ` : ''}
+      `
+          : ''
+      }
 
-      ${isSelected ? `
+      ${
+        isSelected
+          ? `
         <div class="selected-ring"></div>
         <style>
           .selected-ring {
@@ -174,12 +436,22 @@ const createPlaneIcon = (heading: number = 0, isOnGround: boolean = false, isSel
             animation: selected-pulse 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             pointer-events: none;
           }
+
           @keyframes selected-pulse {
-            0% { transform: scale(0.8); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
+            0% {
+              transform: scale(0.8);
+              opacity: 1;
+            }
+
+            100% {
+              transform: scale(1.5);
+              opacity: 0;
+            }
           }
         </style>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
   `;
 
@@ -191,47 +463,73 @@ const createPlaneIcon = (heading: number = 0, isOnGround: boolean = false, isSel
   });
 };
 
-export default function FlightMap({ 
-  flights, 
-  selectedFlight, 
-  onFlightSelect, 
+export default function FlightMap({
+  flights,
+  selectedFlight,
+  onFlightSelect,
   tracks = [],
   tracksLoading = false,
-  height = '500px' 
+  height = '500px',
 }: FlightMapProps) {
-  // Debug: log when tracks change
-  useEffect(() => {
-    console.log(`[FlightMap] tracks for ${selectedFlight?.fr24_id}: ${tracks.length} points`);
-  }, [tracks, selectedFlight]);
+  const defaultWeatherLayer =
+    weatherLayers.find((layer) => layer.id === 'wind_new') ?? weatherLayers[0];
 
-  // Filter flights with valid coordinates
-  const validFlights = flights.filter(
-    flight => flight.lat != null && flight.lon != null && 
-              Math.abs(flight.lat) <= 90 && 
-              Math.abs(flight.lon) <= 180
+  const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const [weatherPanelOpen, setWeatherPanelOpen] = useState(false);
+  const [activeWeatherLayer, setActiveWeatherLayer] =
+    useState<WeatherLayer>(defaultWeatherLayer);
+  const [weatherOpacity, setWeatherOpacity] = useState<number>(
+    defaultWeatherLayer.opacity
   );
 
-  // Build display track positions, optionally extending to the live aircraft position
+  useEffect(() => {
+    console.log(
+      `[FlightMap] tracks for ${selectedFlight?.fr24_id}: ${tracks.length} points`
+    );
+  }, [tracks, selectedFlight]);
+
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      setWeatherPanelOpen(false);
+    }
+  }, []);
+
+  function handleWeatherLayerChange(layer: WeatherLayer) {
+    setActiveWeatherLayer(layer);
+    setWeatherOpacity(layer.opacity);
+    setWeatherEnabled(true);
+  }
+
+  const validFlights = flights.filter(
+    (flight) =>
+      flight.lat != null &&
+      flight.lon != null &&
+      Math.abs(flight.lat) <= 90 &&
+      Math.abs(flight.lon) <= 180
+  );
+
   const displayTrackPositions = useMemo(() => {
     if (!tracks.length) return [];
 
     const trackPositions = tracks
-      .filter(t => t.lat != null && t.lon != null)
-      .map(t => [t.lat, t.lon] as [number, number]);
+      .filter(
+        (t) =>
+          t.lat != null &&
+          t.lon != null &&
+          Math.abs(t.lat) <= 90 &&
+          Math.abs(t.lon) <= 180
+      )
+      .map((t) => [t.lat, t.lon] as [number, number]);
 
-    // If we have a selected flight with live position, and the last track point is significantly different,
-    // append the live position so the line reaches the plane icon.
     if (selectedFlight?.lat != null && selectedFlight?.lon != null) {
       const lastPos = trackPositions[trackPositions.length - 1];
       const livePos: [number, number] = [selectedFlight.lat, selectedFlight.lon];
 
-      // If there's no last point, just use tracks (shouldn't happen because tracks.length>0)
       if (!lastPos) return trackPositions;
 
-      // Check if live position is meaningfully different from last track point
       const latDiff = Math.abs(lastPos[0] - livePos[0]);
       const lonDiff = Math.abs(lastPos[1] - livePos[1]);
-      // Threshold ~0.01° ≈ 1km – adjust as needed
+
       if (latDiff > 0.01 || lonDiff > 0.01) {
         return [...trackPositions, livePos];
       }
@@ -242,18 +540,22 @@ export default function FlightMap({
 
   if (validFlights.length === 0) {
     return (
-      <div 
+      <div
         className="flex items-center justify-center rounded-lg border border-slate-300 bg-slate-50"
         style={{ height }}
       >
-        <div className="text-center p-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
-            <Plane className="w-8 h-8 text-slate-400 rotate-45" />
+        <div className="p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-200">
+            <Plane className="h-8 w-8 rotate-45 text-slate-400" />
           </div>
-          <h3 className="text-lg font-medium text-slate-600 mb-2">No Flight Position Data</h3>
-          <p className="text-slate-500 text-sm">
-            {flights.length === 0 
-              ? 'No flights found to display on the map.' 
+
+          <h3 className="mb-2 text-lg font-medium text-slate-600">
+            No Flight Position Data
+          </h3>
+
+          <p className="text-sm text-slate-500">
+            {flights.length === 0
+              ? 'No flights found to display on the map.'
               : `${flights.length} flights found, but none have valid position data.`}
           </p>
         </div>
@@ -261,37 +563,48 @@ export default function FlightMap({
     );
   }
 
-  // Calculate center point
   let center: [number, number];
+
   if (selectedFlight?.lat != null && selectedFlight?.lon != null) {
     center = [selectedFlight.lat, selectedFlight.lon];
   } else {
-    const avgLat = validFlights.reduce((sum, f) => sum + f.lat!, 0) / validFlights.length;
-    const avgLon = validFlights.reduce((sum, f) => sum + f.lon!, 0) / validFlights.length;
+    const avgLat =
+      validFlights.reduce((sum, flight) => sum + flight.lat!, 0) /
+      validFlights.length;
+
+    const avgLon =
+      validFlights.reduce((sum, flight) => sum + flight.lon!, 0) /
+      validFlights.length;
+
     center = [avgLat, avgLon];
   }
 
   const getZoomLevel = () => {
     if (selectedFlight) return 8;
     if (validFlights.length === 1) return 6;
-    
-    const lats = validFlights.map(f => f.lat!);
-    const lons = validFlights.map(f => f.lon!);
+
+    const lats = validFlights.map((flight) => flight.lat!);
+    const lons = validFlights.map((flight) => flight.lon!);
+
     const latSpread = Math.max(...lats) - Math.min(...lats);
     const lonSpread = Math.max(...lons) - Math.min(...lons);
-    
+
     if (latSpread > 20 || lonSpread > 40) return 3;
     if (latSpread > 10 || lonSpread > 20) return 4;
     if (latSpread > 5 || lonSpread > 10) return 5;
     if (latSpread > 2 || lonSpread > 5) return 6;
+
     return 7;
   };
 
   return (
-    <div className="rounded-lg overflow-hidden border border-slate-300 shadow-sm relative" style={{ height }}>
+    <div
+      className="relative overflow-hidden rounded-lg border border-slate-300 shadow-sm"
+      style={{ height }}
+    >
       {tracksLoading && (
-        <div className="absolute top-4 right-4 z-[1000] bg-white/90 px-3 py-2 rounded-md shadow-md text-sm flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="pointer-events-none absolute right-4 top-4 z-[1000] flex items-center gap-2 rounded-md bg-white/90 px-3 py-2 text-sm shadow-md">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
           <span>Loading flight path...</span>
         </div>
       )}
@@ -301,27 +614,53 @@ export default function FlightMap({
         zoom={getZoomLevel()}
         className="h-full w-full"
         scrollWheelZoom={true}
-        // Optional: add a key to force remount when selected flight changes (if needed)
-        // key={selectedFlight?.fr24_id}
+        zoomControl={false}
       >
+        <ZoomControl position="bottomright" />
+
         <TileLayer
-          attribution=''
+          attribution=""
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          zIndex={100}
         />
-        
+
         <TileLayer
           url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
           opacity={0.2}
+          zIndex={150}
+        />
+
+        {weatherEnabled && (
+          <TileLayer
+            key={`${activeWeatherLayer.id}-${weatherOpacity}`}
+            url={`/api/openweather/weather-map/${activeWeatherLayer.id}/{z}/{x}/{y}`}
+            opacity={weatherOpacity}
+            zIndex={250}
+          />
+        )}
+
+        <WeatherControl
+          weatherEnabled={weatherEnabled}
+          weatherPanelOpen={weatherPanelOpen}
+          activeWeatherLayer={activeWeatherLayer}
+          weatherOpacity={weatherOpacity}
+          setWeatherEnabled={setWeatherEnabled}
+          setWeatherPanelOpen={setWeatherPanelOpen}
+          setWeatherOpacity={setWeatherOpacity}
+          handleWeatherLayerChange={handleWeatherLayerChange}
         />
 
         <MapController flight={selectedFlight} />
         <FitBoundsToTracks tracks={tracks} />
 
-        {/* Flight track for selected flight – now using displayTrackPositions */}
         {displayTrackPositions.length > 0 && (
           <Polyline
             key={`track-${selectedFlight?.fr24_id}-${tracks.length}-${displayTrackPositions.length}`}
-            pathOptions={{ color: '#f59e0b', weight: 3, opacity: 0.8 }}
+            pathOptions={{
+              color: '#f59e0b',
+              weight: 3,
+              opacity: 0.9,
+            }}
             positions={displayTrackPositions}
           />
         )}
@@ -336,44 +675,64 @@ export default function FlightMap({
               key={flight.fr24_id || `flight-${index}`}
               position={[flight.lat!, flight.lon!]}
               icon={createPlaneIcon(heading, isOnGround, isSelected)}
+              zIndexOffset={isSelected ? 1000 : 500}
               eventHandlers={{
                 click: () => onFlightSelect?.(flight),
               }}
             >
               <Popup>
-                <div className="space-y-2 min-w-[200px]">
+                <div className="min-w-[200px] space-y-2">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-slate-800">
-                      {flight.flight || flight.callsign?.trim() || 'Unknown Flight'}
+                      {flight.flight ||
+                        flight.callsign?.trim() ||
+                        'Unknown Flight'}
                     </h3>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${
-                      isOnGround ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
+
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${
+                        isOnGround
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
                       {isOnGround ? 'On Ground' : 'In Air'}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Altitude:</span>
                       <span className="font-medium">
-                        {flight.alt ? `${Math.round(flight.alt).toLocaleString()} ft` : 'N/A'}
+                        {flight.alt
+                          ? `${Math.round(flight.alt).toLocaleString()} ft`
+                          : 'N/A'}
                       </span>
                     </div>
+
                     <div className="flex justify-between">
                       <span className="text-slate-600">Speed:</span>
                       <span className="font-medium">
-                        {flight.gspeed != null ? `${Math.round(flight.gspeed)} kts` : 'N/A'}
+                        {flight.gspeed != null
+                          ? `${Math.round(flight.gspeed)} kts`
+                          : 'N/A'}
                       </span>
                     </div>
+
                     <div className="flex justify-between">
                       <span className="text-slate-600">Heading:</span>
-                      <span className="font-medium">{Math.round(heading)}°</span>
+                      <span className="font-medium">
+                        {Math.round(heading)}°
+                      </span>
                     </div>
+
                     <div className="flex justify-between">
                       <span className="text-slate-600">Flight ID:</span>
-                      <span className="font-medium font-mono">{flight.fr24_id || 'N/A'}</span>
+                      <span className="font-mono font-medium">
+                        {flight.fr24_id || 'N/A'}
+                      </span>
                     </div>
+
                     <div className="flex justify-between">
                       <span className="text-slate-600">Registration:</span>
                       <span className="font-medium">{flight.reg || 'N/A'}</span>
@@ -381,24 +740,35 @@ export default function FlightMap({
                   </div>
 
                   {(flight.orig_iata || flight.dest_iata) && (
-                    <div className="pt-2 border-t border-slate-200">
+                    <div className="border-t border-slate-200 pt-2">
                       <div className="flex items-center justify-between text-sm">
                         <div className="text-center">
-                          <div className="font-bold text-blue-600">{flight.orig_iata || '—'}</div>
-                          <div className="text-xs text-slate-500">{flight.orig_icao || ''}</div>
+                          <div className="font-bold text-blue-600">
+                            {flight.orig_iata || '—'}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {flight.orig_icao || ''}
+                          </div>
                         </div>
-                        <Navigation className="w-4 h-4 text-slate-400 mx-2" />
+
+                        <Navigation className="mx-2 h-4 w-4 text-slate-400" />
+
                         <div className="text-center">
-                          <div className="font-bold text-green-600">{flight.dest_iata || '—'}</div>
-                          <div className="text-xs text-slate-500">{flight.dest_icao || ''}</div>
+                          <div className="font-bold text-green-600">
+                            {flight.dest_iata || '—'}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {flight.dest_icao || ''}
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
-                  
-                  <div className="pt-2 border-t border-slate-200">
+
+                  <div className="border-t border-slate-200 pt-2">
                     <div className="text-xs text-slate-500">
-                      Coordinates: {flight.lat!.toFixed(4)}, {flight.lon!.toFixed(4)}
+                      Coordinates: {flight.lat!.toFixed(4)},{' '}
+                      {flight.lon!.toFixed(4)}
                     </div>
                   </div>
                 </div>

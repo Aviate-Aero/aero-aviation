@@ -47,7 +47,7 @@ export default function FlightTracker() {
     try {
       const response = await fetch('/api/flightTracker', {
         method: 'POST',
-        headers: { 'Content': 'application/json' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),
       });
 
