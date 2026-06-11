@@ -86,7 +86,7 @@ export default function WeatherMap() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black text-white mt-40">
+    <div className="relative overflow-hidden bg-black text-white">
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute left-1/2 top-0 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-sky-500/10 blur-[120px]" />
@@ -275,6 +275,6 @@ export default function WeatherMap() {
           </div>
         </motion.section>
       </section>
-    </main>
+    </div>
   )
 }
