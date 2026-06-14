@@ -30,7 +30,7 @@ const weatherLayers: WeatherLayer[] = [
     id: "clouds_new",
     label: "Clouds",
     description: "Live cloud coverage",
-    opacity: 0.6,
+    opacity: 0.95,
     icon: Cloud,
   },
   {
@@ -51,7 +51,7 @@ const weatherLayers: WeatherLayer[] = [
     id: "wind_new",
     label: "Wind",
     description: "Wind speed overlay",
-    opacity: 0.55,
+    opacity: 0.95,
     icon: Wind,
   },
   {
@@ -87,6 +87,20 @@ export default function WeatherMap() {
 
   return (
     <div className="relative overflow-hidden bg-black text-white">
+      {/* The OpenWeather 1.0 tiles (wind, clouds) are pale and semi-transparent,
+          so even at full opacity they read as faint. Saturate + contrast the
+          overlay so the colours render darker and clearly visible. */}
+      <style>{`
+        .weather-overlay-tiles {
+          filter: saturate(1.8) contrast(1.35) brightness(0.92);
+        }
+        /* Wind and clouds tiles are the palest — push them much darker. */
+        .overlay-wind_new,
+        .overlay-clouds_new {
+          filter: saturate(2.4) contrast(1.9) brightness(0.7);
+        }
+      `}</style>
+
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute left-1/2 top-0 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-sky-500/10 blur-[120px]" />
@@ -163,6 +177,7 @@ export default function WeatherMap() {
 
               <TileLayer
                 key={activeLayer.id}
+                className={`weather-overlay-tiles overlay-${activeLayer.id}`}
                 url={`/api/openweather/weather-map/${activeLayer.id}/{z}/{x}/{y}`}
                 opacity={opacity}
               />
