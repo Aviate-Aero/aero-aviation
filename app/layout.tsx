@@ -25,6 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", inter.variable)}>
+      <head>
+      <meta name="google-site-verification" content="0fLow2lm8VtXGf88aJ2x7EfkWblkonygMdKFCRjT-NA" />
       <body
         className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-black text-white`}
       >
@@ -34,6 +36,7 @@ export default function RootLayout({
         <LenisProvider>{children}</LenisProvider>
         <FooterSection />
       </body>
+      </head>
     </html>
   )
 }
