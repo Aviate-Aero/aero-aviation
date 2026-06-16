@@ -1,165 +1,190 @@
+// app/api/flightData/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get('query') || '';
-  
-  // Get search type from query params or default to 'flights'
-  const searchType = searchParams.get('searchType') || 'flights';
+export const dynamic = 'force-dynamic';
 
+type SearchType = 'flights' | 'callsigns' | 'registrations' | 'airlines';
+
+const FR24_URL = 'https://fr24api.flightradar24.com/api/flight-summary/full';
+
+const SEARCH_PARAM_MAP: Record<SearchType, string> = {
+  flights: 'flights',
+  callsigns: 'callsigns',
+  registrations: 'registrations',
+  airlines: 'operating_as',
+};
+
+function isSearchType(value: string | null): value is SearchType {
+  return value === 'flights'
+    || value === 'callsigns'
+    || value === 'registrations'
+    || value === 'airlines';
+}
+
+function toFr24Date(date: Date) {
+  return date.toISOString().slice(0, 19);
+}
+
+function hasBasicFlightInfo(flight: any) {
+  return Boolean(
+    flight?.flight
+    && flight?.reg
+    && (flight?.orig_iata || flight?.dest_iata)
+  );
+}
+
+async function fetchFlightRadar(params: URLSearchParams, apiKey: string) {
+  const response = await fetch(`${FR24_URL}?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Accept-Version': 'v1',
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  const raw = await response.text();
+
+  let json: any = null;
+  try {
+    json = raw ? JSON.parse(raw) : null;
+  } catch {
+    json = null;
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error: json?.message || json?.error || `FlightRadar24 API error: ${response.status}`,
+    };
+  }
+
+  return {
+    ok: true,
+    status: response.status,
+    data: json,
+  };
+}
+
+export async function GET(request: NextRequest) {
   const apiKey = process.env.FLIGHT_RADAR_API_KEY;
 
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'API key not configured' },
+      { error: 'FlightRadar24 API key is not configured on the server.' },
       { status: 500 }
     );
   }
 
-  try {
-    if (!query.trim()) {
-      return NextResponse.json(
-        { error: 'Query parameter is required' },
-        { status: 400 }
-      );
-    }
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get('query')?.trim() || '';
+  const requestedSearchType = searchParams.get('searchType');
 
-    // Use Flight Summary Full endpoint
-    const url = 'https://fr24api.flightradar24.com/api/flight-summary/full';
-    
-    // Set date range - use 7 days (within the 14-day max limit)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    const dateFrom = sevenDaysAgo.toISOString().slice(0, 19); // Format: YYYY-MM-DDTHH:MM:SS
-    const dateTo = now.toISOString().slice(0, 19);
-
-    const params = new URLSearchParams();
-    params.append('flight_datetime_from', dateFrom);
-    params.append('flight_datetime_to', dateTo);
-    params.append('limit', '20');
-    params.append('sort', 'desc'); // Get most recent first
-
-    // Add search parameter based on type
-    if (searchType === 'callsigns') {
-      params.append('callsigns', query.toUpperCase());
-    } else if (searchType === 'registrations') {
-      params.append('registrations', query.toUpperCase());
-    } else if (searchType === 'airlines') {
-      params.append('operating_as', query.toUpperCase());
-    } else {
-      // Default to flight numbers
-      params.append('flights', query.toUpperCase());
-    }
-
-    const fullUrl = `${url}?${params.toString()}`;
-
-    console.log('[API] Fetching from Flight Radar:', fullUrl);
-
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept-Version': 'v1',
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store', // Prevent caching
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('[API] Flight Radar API error:', response.status, errorData);
-      
-      // Try to parse error if it's JSON
-      try {
-        const jsonError = JSON.parse(errorData);
-        return NextResponse.json(
-          { error: jsonError.message || `Failed to fetch flights: ${response.status}` },
-          { status: response.status }
-        );
-      } catch {
-        return NextResponse.json(
-          { error: `API Error: ${response.status}` },
-          { status: response.status }
-        );
-      }
-    }
-
-    const data = await response.json();
-    console.log('[API] Raw API response:', JSON.stringify(data, null, 2));
-
-    // Check if data is in the expected format
-    if (!data.data || !Array.isArray(data.data)) {
-      return NextResponse.json(
-        { error: 'Invalid API response format', data },
-        { status: 500 }
-      );
-    }
-
-    // Filter out flights without basic information
-    const validFlights = data.data.filter((flight: any) => 
-      flight.flight && flight.reg && (flight.orig_iata || flight.dest_iata)
+  if (!query) {
+    return NextResponse.json(
+      { error: 'Query parameter is required.' },
+      { status: 400 }
     );
+  }
 
-    // If no valid flights found, try a broader search
-    if (validFlights.length === 0) {
-      console.log('[API] No valid flights found, trying broader search...');
-      
-      // Try different search strategies
-      const broaderStrategies = [
-        { type: 'airports', param: 'airports', value: query.toUpperCase() },
-        { type: 'routes', param: 'routes', value: query.toUpperCase() },
-      ];
+  const searchType: SearchType = isSearchType(requestedSearchType)
+    ? requestedSearchType
+    : 'flights';
 
-      for (const strategy of broaderStrategies) {
-        try {
-          const strategyParams = new URLSearchParams();
-          strategyParams.append('flight_datetime_from', dateFrom);
-          strategyParams.append('flight_datetime_to', dateTo);
-          strategyParams.append('limit', '10');
-          strategyParams.append(strategy.param, strategy.value);
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-          const strategyUrl = `${url}?${strategyParams.toString()}`;
-          console.log('[API] Trying strategy:', strategy.type, strategyUrl);
+  const dateFrom = toFr24Date(sevenDaysAgo);
+  const dateTo = toFr24Date(now);
 
-          const strategyResponse = await fetch(strategyUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'Accept-Version': 'v1',
-              'Content-Type': 'application/json',
-            },
+  const baseParams = new URLSearchParams({
+    flight_datetime_from: dateFrom,
+    flight_datetime_to: dateTo,
+    limit: '20',
+    sort: 'desc',
+  });
+
+  baseParams.append(SEARCH_PARAM_MAP[searchType], query.toUpperCase());
+
+  try {
+    const primaryResult = await fetchFlightRadar(baseParams, apiKey);
+
+    if (!primaryResult.ok) {
+      return NextResponse.json(
+        { error: primaryResult.error },
+        { status: primaryResult.status }
+      );
+    }
+
+    if (!primaryResult.data?.data || !Array.isArray(primaryResult.data.data)) {
+      return NextResponse.json(
+        {
+          error: 'Invalid FlightRadar24 API response format.',
+          data: primaryResult.data,
+        },
+        { status: 502 }
+      );
+    }
+
+    const validFlights = primaryResult.data.data.filter(hasBasicFlightInfo);
+
+    if (validFlights.length > 0) {
+      return NextResponse.json({
+        data: validFlights,
+        searchUsed: searchType,
+      });
+    }
+
+    const fallbackStrategies = [
+      { searchStrategy: 'airports', param: 'airports' },
+      { searchStrategy: 'routes', param: 'routes' },
+    ] as const;
+
+    for (const strategy of fallbackStrategies) {
+      const fallbackParams = new URLSearchParams({
+        flight_datetime_from: dateFrom,
+        flight_datetime_to: dateTo,
+        limit: '10',
+        sort: 'desc',
+      });
+
+      fallbackParams.append(strategy.param, query.toUpperCase());
+
+      const fallbackResult = await fetchFlightRadar(fallbackParams, apiKey);
+
+      if (!fallbackResult.ok) {
+        continue;
+      }
+
+      const fallbackFlights = fallbackResult.data?.data;
+
+      if (Array.isArray(fallbackFlights)) {
+        const filtered = fallbackFlights.filter((flight: any) => (
+          flight?.flight && flight?.reg
+        ));
+
+        if (filtered.length > 0) {
+          return NextResponse.json({
+            data: filtered,
+            searchStrategy: strategy.searchStrategy,
           });
-
-          if (strategyResponse.ok) {
-            const strategyData = await strategyResponse.json();
-            if (strategyData.data && strategyData.data.length > 0) {
-              const filtered = strategyData.data.filter((flight: any) => 
-                flight.flight && flight.reg
-              );
-              if (filtered.length > 0) {
-                return NextResponse.json({ 
-                  data: filtered,
-                  searchStrategy: strategy.type 
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.log('[API] Strategy failed:', strategy.type, error);
         }
       }
     }
 
-    return NextResponse.json({ 
-      data: validFlights,
-      searchUsed: searchType 
+    return NextResponse.json({
+      data: [],
+      searchUsed: searchType,
     });
-
   } catch (error) {
-    console.error('[API] Error fetching flights:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Internal server error while fetching flight data.',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }
