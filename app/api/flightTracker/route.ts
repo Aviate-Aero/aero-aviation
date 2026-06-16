@@ -1,70 +1,115 @@
+// app/api/fr24/tracks/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = 'https://fr24api.flightradar24.com';
-const API_TOKEN = process.env.FLIGHT_RADAR_API_KEY;
+const FR24_API_BASE_URL = 'https://fr24api.flightradar24.com';
+const REQUEST_TIMEOUT_MS = 20000;
 
-export async function POST(request: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+function getApiToken() {
+  const token = process.env.FLIGHT_RADAR_API_KEY;
+
+  if (!token) {
+    throw new Error('Flight Radar API token not configured on server.');
+  }
+
+  return token;
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}) {
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+
   try {
-    if (!API_TOKEN) {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function parseResponse(response: Response) {
+  const text = await response.text();
+
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const apiToken = getApiToken();
+
+    const flightId = request.nextUrl.searchParams.get('flight_id')?.trim();
+
+    if (!flightId) {
       return NextResponse.json(
-        { error: 'Flight Radar API token not configured' },
-        { status: 500 }
+        { error: 'flight_id query parameter is required.' },
+        { status: 400 }
       );
     }
 
-    const body = await request.json();
+    const params = new URLSearchParams({
+      flight_id: flightId,
+    });
 
-    // Build query parameters
-    const params = new URLSearchParams();
+    const url = `${FR24_API_BASE_URL}/api/flight-tracks?${params.toString()}`;
 
-    if (body.flights) {
-      params.append('flights', body.flights);
-    }
-    if (body.airports) {
-      params.append('airports', body.airports);
-    }
-    if (body.operating_as) {
-      params.append('operating_as', body.operating_as);
-    }
-
-    // Add limit for reasonable response size
-    params.append('limit', '500');
-
-    const url = `${API_BASE_URL}/api/live/flight-positions/full?${params.toString()}`;
-
-    console.log('[v0] Fetching flights from:', url);
-
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
         'Accept-Version': 'v1',
-        Authorization: `Bearer ${API_TOKEN}`,
+        Authorization: `Bearer ${apiToken}`,
       },
     });
 
+    const data = await parseResponse(response);
+
     if (!response.ok) {
-      console.error('[v0] Flight Radar API error:', response.status, response.statusText);
       return NextResponse.json(
-        { error: `Failed to fetch flights: ${response.statusText}` },
+        {
+          error:
+            data?.error ||
+            data?.message ||
+            `FlightRadar24 tracks request failed: ${response.status}`,
+        },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
-    console.log('[v0] Received flights:', data.data?.length || 0);
+    const tracks =
+      Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.tracks)
+          ? data.tracks
+          : [];
 
     return NextResponse.json({
-      flights: data.data || [],
-      total: data.data?.length || 0,
+      tracks,
+      total: tracks.length,
     });
   } catch (error) {
-    console.error('[v0] Error fetching flights:', error);
+    const isAbortError = error instanceof Error && error.name === 'AbortError';
+
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to fetch flights',
+        error: isAbortError
+          ? 'FlightRadar24 tracks request timed out.'
+          : error instanceof Error
+            ? error.message
+            : 'Failed to fetch flight tracks.',
       },
-      { status: 500 }
+      { status: isAbortError ? 504 : 500 }
     );
   }
 }
