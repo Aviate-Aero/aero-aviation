@@ -127,7 +127,7 @@ const TRACK_SOURCE_STYLES: Record<TrackSourceKey, TrackSourceStyle> = {
     color: '#f97316',
   },
   estimated: {
-    label: 'Estimated',
+    label: 'Iridium Next',
     color: '#a855f7',
     dashArray: '8 8',
   },
