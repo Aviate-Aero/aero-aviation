@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type React from 'react';
 import type { ComponentType } from 'react';
 import {
   MapContainer,
@@ -267,7 +268,9 @@ function MapController({ flight }: { flight?: Flight | null }) {
 
   useEffect(() => {
     if (isValidLatLon(flight?.lat, flight?.lon)) {
-      map.flyTo([flight!.lat!, flight!.lon!], 8, {
+      const currentZoom = map.getZoom();
+
+      map.flyTo([flight!.lat!, flight!.lon!], currentZoom, {
         animate: true,
         duration: 0.8,
       });
