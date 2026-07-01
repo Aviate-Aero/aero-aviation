@@ -62,6 +62,12 @@ export function Navbar() {
           <Link href="/pricing" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
             Pricing
           </Link>
+          <Link
+            href="/newsletter-pricing"
+            className="px-4 py-2 rounded-full bg-zinc-900/80 border border-sky-500/30 text-sky-300 text-sm font-medium hover:bg-sky-500/15 hover:border-sky-500/60 transition-all duration-300"
+          >
+            Newsletter
+          </Link>
           <Link href="/about-us" className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors duration-300">
             About
           </Link>

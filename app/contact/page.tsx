@@ -22,6 +22,7 @@ const queryTypes = [
   { value: "aviation-intelligence", label: "Aviation Intelligence" },
   { value: "jet-fuel", label: "Jet Fuel" },
   { value: "charter-services", label: "Charter Services" },
+  { value: "news-letter", label: "Newsletter" },
 ]
 
 export default function ContactPage() {
