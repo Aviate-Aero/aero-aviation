@@ -31,7 +31,7 @@ export default async function NewsletterPricingPage({
       <section className="relative px-6 pb-24 pt-40">
         <div className="mx-auto max-w-7xl">
           {checkoutStatus === "success" ? (
-            <div className="mb-8 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+            <div className="mb-8 rounded-2xl border border-emerald-400/25 bg-emerald-950/60 p-4 text-sm text-emerald-200">
               Payment received. Your newsletter subscription is active.
             </div>
           ) : null}
