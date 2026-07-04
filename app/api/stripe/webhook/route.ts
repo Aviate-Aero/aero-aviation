@@ -4,9 +4,9 @@ import { NextResponse } from "next/server"
 
 export const runtime = "nodejs"
 
-const NEWSLETTER_GROUP_NAME = "newsletter"
+const NEWSLETTER_GROUP_NAME = "Newsletter"
 const NEWSLETTER_GROUP_DESCRIPTION =
-  "Paid newsletter subscribers imported from Stripe Checkout."
+  "Paid newsletter subscribers"
 
 type StripeObject = Record<string, unknown>
 
@@ -144,14 +144,14 @@ function getNameFromStripeObject(object: StripeObject, email: string) {
 async function ensureNewsletterGroup() {
   const supabase = createSupabaseServerClient()
 
-  const { data: existingGroup, error: existingError } = await supabase
+  const { data: existingGroups, error: existingError } = await supabase
     .from("email_groups")
     .select("id, name, description")
     .eq("name", NEWSLETTER_GROUP_NAME)
-    .maybeSingle()
+    .limit(1)
 
   if (existingError) throw existingError
-  if (existingGroup) return existingGroup as EmailGroup
+  if (existingGroups?.[0]) return existingGroups[0] as EmailGroup
 
   const { data: createdGroup, error: createError } = await supabase
     .from("email_groups")
@@ -162,7 +162,18 @@ async function ensureNewsletterGroup() {
     .select("id, name, description")
     .single()
 
-  if (createError) throw createError
+  if (createError) {
+    // Another webhook event may have created the group at the same time.
+    const { data: retryGroups, error: retryError } = await supabase
+      .from("email_groups")
+      .select("id, name, description")
+      .eq("name", NEWSLETTER_GROUP_NAME)
+      .limit(1)
+
+    if (retryError) throw retryError
+    if (retryGroups?.[0]) return retryGroups[0] as EmailGroup
+    throw createError
+  }
 
   return createdGroup as EmailGroup
 }
@@ -177,16 +188,16 @@ async function upsertNewsletterContact({
   const supabase = createSupabaseServerClient()
   const cleanEmail = email.trim().toLowerCase()
 
-  const { data: existingContact, error: existingError } = await supabase
+  const { data: existingContacts, error: existingError } = await supabase
     .from("email_contacts")
     .select("id, full_name, email, department, role, source, employee_id")
     .eq("email", cleanEmail)
-    .maybeSingle()
+    .limit(1)
 
   if (existingError) throw existingError
 
-  if (existingContact) {
-    return existingContact as EmailContact
+  if (existingContacts?.[0]) {
+    return existingContacts[0] as EmailContact
   }
 
   const { data: createdContact, error: createError } = await supabase
@@ -196,12 +207,23 @@ async function upsertNewsletterContact({
       email: cleanEmail,
       department: "Newsletter",
       role: "Subscriber",
-      source: "stripe_newsletter",
+      source: "stripe",
     })
     .select("id, full_name, email, department, role, source, employee_id")
     .single()
 
-  if (createError) throw createError
+  if (createError) {
+    // If a parallel webhook inserted the contact first, reuse it.
+    const { data: retryContacts, error: retryError } = await supabase
+      .from("email_contacts")
+      .select("id, full_name, email, department, role, source, employee_id")
+      .eq("email", cleanEmail)
+      .limit(1)
+
+    if (retryError) throw retryError
+    if (retryContacts?.[0]) return retryContacts[0] as EmailContact
+    throw createError
+  }
 
   return createdContact as EmailContact
 }
@@ -222,11 +244,24 @@ async function addContactToNewsletterGroup(contactId: string, groupId: string) {
   if (error) throw error
 }
 
+async function removeContactFromNewsletterGroup(contactId: string, groupId: string) {
+  const supabase = createSupabaseServerClient()
+
+  const { error } = await supabase
+    .from("email_group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("contact_id", contactId)
+
+  if (error) throw error
+}
+
 async function saveStripeCustomerToNewsletterGroup(object: StripeObject) {
   const email = await getEmailFromStripeObject(object)
 
   if (!email || !email.includes("@")) {
-    throw new Error("Stripe event does not include a usable customer email.")
+    console.warn("[Stripe Webhook] Event did not include a usable customer email.")
+    return false
   }
 
   const group = await ensureNewsletterGroup()
@@ -236,6 +271,78 @@ async function saveStripeCustomerToNewsletterGroup(object: StripeObject) {
   })
 
   await addContactToNewsletterGroup(contact.id, group.id)
+  return true
+}
+
+async function removeStripeCustomerFromNewsletterGroup(object: StripeObject) {
+  const email = await getEmailFromStripeObject(object)
+
+  if (!email || !email.includes("@")) {
+    console.warn(
+      "[Stripe Webhook] Subscription deletion did not include a usable customer email.",
+    )
+    return false
+  }
+
+  const supabase = createSupabaseServerClient()
+  const cleanEmail = email.trim().toLowerCase()
+
+  const { data: groups, error: groupError } = await supabase
+    .from("email_groups")
+    .select("id, name, description")
+    .eq("name", NEWSLETTER_GROUP_NAME)
+    .limit(1)
+
+  if (groupError) throw groupError
+
+  const group = groups?.[0] as EmailGroup | undefined
+  if (!group) {
+    console.warn("[Stripe Webhook] Newsletter group was not found during removal.")
+    return false
+  }
+
+  const { data: contacts, error: contactError } = await supabase
+    .from("email_contacts")
+    .select("id, full_name, email, department, role, source, employee_id")
+    .eq("email", cleanEmail)
+    .limit(1)
+
+  if (contactError) throw contactError
+
+  const contact = contacts?.[0] as EmailContact | undefined
+  if (!contact) {
+    console.warn(
+      `[Stripe Webhook] No newsletter contact found for cancelled subscriber ${cleanEmail}.`,
+    )
+    return false
+  }
+
+  await removeContactFromNewsletterGroup(contact.id, group.id)
+  return true
+}
+
+async function trySaveStripeCustomerToNewsletterGroup(
+  eventType: string,
+  object: StripeObject,
+) {
+  try {
+    return await saveStripeCustomerToNewsletterGroup(object)
+  } catch (error) {
+    console.error(`[Stripe Webhook] Newsletter sync failed for ${eventType}:`, error)
+    return false
+  }
+}
+
+async function tryRemoveStripeCustomerFromNewsletterGroup(
+  eventType: string,
+  object: StripeObject,
+) {
+  try {
+    return await removeStripeCustomerFromNewsletterGroup(object)
+  } catch (error) {
+    console.error(`[Stripe Webhook] Newsletter removal failed for ${eventType}:`, error)
+    return false
+  }
 }
 
 export async function POST(request: Request) {
@@ -251,24 +358,51 @@ export async function POST(request: Request) {
 
   try {
     verifyStripeSignature(payload, signature)
+  } catch (error) {
+    console.error("[Stripe Webhook] Signature verification failed:", error)
 
-    const event = JSON.parse(payload) as StripeEvent
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Stripe signature verification failed.",
+      },
+      { status: 400 },
+    )
+  }
+
+  let event: StripeEvent
+
+  try {
+    event = JSON.parse(payload) as StripeEvent
+  } catch (error) {
+    console.error("[Stripe Webhook] Invalid JSON payload:", error)
+
+    return NextResponse.json(
+      { error: "Invalid Stripe webhook payload." },
+      { status: 400 },
+    )
+  }
+
+  try {
     const eventObject = event.data.object
 
     switch (event.type) {
       case "checkout.session.completed":
-      case "invoice.payment_succeeded":
       case "customer.subscription.created":
       case "customer.subscription.updated":
-        await saveStripeCustomerToNewsletterGroup(eventObject)
+        await trySaveStripeCustomerToNewsletterGroup(event.type, eventObject)
         break
-      case "invoice.payment_failed":
       case "customer.subscription.deleted":
+        await tryRemoveStripeCustomerFromNewsletterGroup(event.type, eventObject)
+        break
+      case "invoice.payment_succeeded":
+      case "invoice.payment_failed":
       case "checkout.session.expired":
       case "invoice.payment_action_required":
-        // These events are intentionally acknowledged here. The paid
-        // newsletter group keeps subscriber history; removal/inactivation can
-        // be layered in later if you want automatic unsubscribe behavior.
+        // These events are intentionally acknowledged here. Invoice failures
+        // are not removed immediately because Stripe can still recover payment.
         break
       default:
         break
@@ -276,15 +410,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("[Stripe Webhook] Error:", error)
+    console.error(`[Stripe Webhook] Handler error for ${event.type}:`, error)
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Stripe webhook failed.",
+        received: true,
+        warning: "Webhook acknowledged, but internal newsletter sync failed.",
       },
-      { status: 400 },
+      { status: 200 },
     )
   }
 }
-
