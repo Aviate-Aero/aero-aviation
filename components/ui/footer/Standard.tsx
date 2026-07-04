@@ -91,24 +91,13 @@ export function FooterSection() {
           {/* Address */}
           <div className="col-span-2">
             <h4 className="font-heading text-sm font-semibold text-zinc-100 mb-4">
-              Our Office
+              Our Email
             </h4>
 
             <address className="not-italic text-sm text-zinc-500 space-y-1">
-              <p>
-                Office 5170m, 3 Fitzroy Place, 1/1, Sauchiehall Street,
-                Finnieston
-              </p>
-
-              <p>Glasgow Central, G3 7RH, United Kingdom</p>
-
-              <h4 className="font-heading text-sm font-semibold text-zinc-100 mb-4 mt-4">
-                Our Email
-              </h4>
-
               <a
                 href="mailto:info@aeroaviation.me"
-                className="block mt-3 hover:text-zinc-300 transition-colors"
+                className="block hover:text-zinc-300 transition-colors"
               >
                 info@aeroaviation.me
               </a>
