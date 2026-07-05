@@ -37,7 +37,7 @@ export default function FlightTracker() {
   const [tracksLoading, setTracksLoading] = useState(false);
   const [tracksError, setTracksError] = useState<string | null>(null);
 
-  // Stores the latest search so we can repeat it every 1 minute
+  // Stores the latest search so we can repeat it every 30 seconds
   const lastSearchRef = useRef<{ params: any; type: string } | null>(null);
 
   // Prevents overlapping refresh requests
@@ -167,7 +167,7 @@ export default function FlightTracker() {
       } finally {
         refreshInProgressRef.current = false;
       }
-    }, 60000);
+    }, 30000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -190,7 +190,7 @@ export default function FlightTracker() {
     const flightId = selectedFlight.fr24_id;
 
     // Fetch route/track only once per selected flight.
-    // Live movement comes from the 1-minute flight position refresh above.
+    // Live movement comes from the 30-second flight position refresh above.
     if (flightTracks[flightId]) return;
 
     const fetchTracks = async () => {
@@ -352,7 +352,7 @@ export default function FlightTracker() {
                               Interactive Flight Map
                             </h3>
                             <p className="text-sm text-sky-400/80">
-                              Click on aircraft icons for details. Auto-refreshes every 1 minute.
+                              Click on aircraft icons for details. Auto-refreshes every 30 seconds.
                             </p>
                           </div>
                         </div>
@@ -425,7 +425,7 @@ export default function FlightTracker() {
 
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-emerald-400 font-mono">
-                          Auto-refresh: 1m
+                          Auto-refresh: 30s
                         </span>
 
                         {selectedFlight && (
