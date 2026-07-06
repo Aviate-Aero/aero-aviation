@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card/Standard"
 import {
   Plane,
-  FileText,
-  Database,
   Bot,
   ArrowRight,
   Ticket,
@@ -17,9 +15,7 @@ import {
   Radar,
   Gauge,
   ClipboardList,
-  MapPinned,
   Map,
-  Building2,
   Activity,
   Rows3,
   Route,
@@ -116,6 +112,27 @@ const apps = [
     route: "/flight-intel/flight-tracker",
   },
   {
+    title: "Live Position Count",
+    description:
+      "Count live aircraft positions by bounds, airport, route, aircraft type, source, and category.",
+    icon: <Satellite className="h-6 w-6" />,
+    route: "/flight-intel/live-flight-count",
+  },
+  {
+    title: "Historic Position Count",
+    description:
+      "Count historical aircraft positions at one timestamp with route, airport, aircraft, and source filters.",
+    icon: <Clock className="h-6 w-6" />,
+    route: "/flight-intel/historic-flight-count",
+  },
+  {
+    title: "Flight Summary Count",
+    description:
+      "Count flight summary records by date range, FR24 ID, flight, route, airport, aircraft, and operator.",
+    icon: <Activity className="h-6 w-6" />,
+    route: "/flight-intel/flight-summary-count",
+  },
+  {
     title: "Aviation Intelligence",
     description:
       "Generate AI-powered aviation reports on incidents, NOTAMs, closures, and more.",
@@ -128,13 +145,6 @@ const apps = [
       "View live arrival and departure boards for airports worldwide.",
     icon: <PlaneLanding className="h-6 w-6" />,
     route: "/flight-intel/flight-destinations",
-  },
-  {
-    title: "Airport Information",
-    description:
-      "Explore essential airport details, codes, location, and operational data.",
-    icon: <Building2 className="h-6 w-6" />,
-    route: "/flight-intel/airport-info",
   },
   {
     title: "Flight Status",

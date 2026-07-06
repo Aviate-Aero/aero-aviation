@@ -3,8 +3,40 @@ import { NextRequest, NextResponse } from 'next/server';
 const FLIGHT_RADAR_API_URL = 'https://fr24api.flightradar24.com/api/static';
 const API_TOKEN = process.env.FLIGHT_RADAR_API_KEY;
 
-// Cache for storing airport data (in-memory cache)
-const airportCache = new Map<string, { data: any; timestamp: number }>();
+interface FlightRadarAirportRunway {
+  designator?: string;
+  heading?: number | string;
+  length?: number | string;
+  width?: number | string;
+  elevation?: number | string;
+  thr_coordinates?: unknown;
+  surface?: {
+    type?: string;
+    description?: string;
+  };
+}
+
+interface FlightRadarAirportFull {
+  name?: string;
+  iata?: string;
+  icao?: string;
+  lon?: number | string;
+  lat?: number | string;
+  elevation?: number | string;
+  country?: {
+    code?: string;
+    name?: string;
+  };
+  city?: string;
+  state?: string | null;
+  timezone?: {
+    name?: string;
+    offset?: number | string;
+  };
+  runways?: FlightRadarAirportRunway[];
+}
+
+const airportCache = new Map<string, { data: FlightRadarAirportFull; timestamp: number }>();
 const CACHE_DURATION = 3600000; // 1 hour in milliseconds
 
 export async function GET(request: NextRequest) {
@@ -37,36 +69,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(transformedAirport);
     }
 
-    // Try to fetch from Flight Radar API
-    // Note: The API endpoint uses IATA codes in the URL (based on your example)
     const airportData = await fetchAirportFromFlightRadar(searchTerm);
 
     if (!airportData) {
-      // If not found with IATA, try searching by name or city if needed
-      // (This would require a different endpoint if available)
       return NextResponse.json(
         { 
           error: `Airport "${query}" not found.`,
-          suggestion: 'Please use a valid 3-letter IATA airport code (e.g., LAX, LHR, WAW).'
+          suggestion: 'Please use a valid IATA or ICAO airport code (e.g., LHR, DXB, EGLL, OMDB).'
         },
         { status: 404 }
       );
     }
 
-    // Cache the result
     airportCache.set(searchTerm, {
       data: airportData,
       timestamp: Date.now()
     });
 
-    // Transform API response to your expected format
     const transformedAirport = transformAirportData(airportData);
     return NextResponse.json(transformedAirport);
 
   } catch (error) {
     console.error('[API] Error fetching airport info:', error);
     
-    // Provide more specific error messages based on the error
     if (error instanceof Error) {
       if (error.message.includes('401')) {
         return NextResponse.json(
@@ -88,16 +113,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function fetchAirportFromFlightRadar(iataCode: string): Promise<any> {
+async function fetchAirportFromFlightRadar(airportCode: string): Promise<FlightRadarAirportFull | null> {
   try {
-    // Clean the IATA code (remove any non-alphabet characters)
-    const cleanCode = iataCode.replace(/[^A-Z]/g, '');
+    const cleanCode = airportCode.replace(/[^A-Z]/g, '');
     
-    if (cleanCode.length !== 3) {
-      throw new Error('Invalid IATA code length. Must be 3 letters.');
+    if (![3, 4].includes(cleanCode.length)) {
+      throw new Error('Invalid airport code length. Must be a 3-letter IATA code or 4-letter ICAO code.');
     }
 
-    const url = `${FLIGHT_RADAR_API_URL}/airports/${cleanCode}/light`;
+    const url = `${FLIGHT_RADAR_API_URL}/airports/${cleanCode}/full`;
     
     console.log(`[API] Fetching from: ${url}`);
     
@@ -107,7 +131,6 @@ async function fetchAirportFromFlightRadar(iataCode: string): Promise<any> {
         'Accept-Version': 'v1',
         'Authorization': `Bearer ${API_TOKEN}`
       },
-      // Add timeout to prevent hanging requests
       signal: AbortSignal.timeout(10000)
     });
 
@@ -117,7 +140,6 @@ async function fetchAirportFromFlightRadar(iataCode: string): Promise<any> {
         return null;
       }
       
-      // Try to get error details from response
       let errorDetail = `Status: ${response.status}`;
       try {
         const errorData = await response.json();
@@ -129,7 +151,7 @@ async function fetchAirportFromFlightRadar(iataCode: string): Promise<any> {
       throw new Error(`Flight Radar API error: ${errorDetail}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as FlightRadarAirportFull;
     console.log(`[API] Successfully fetched ${cleanCode}:`, 
       Object.keys(data).length > 0 ? 'Data received' : 'Empty response');
     
@@ -137,39 +159,66 @@ async function fetchAirportFromFlightRadar(iataCode: string): Promise<any> {
 
   } catch (error) {
     if (error instanceof Error && error.name === 'TimeoutError') {
-      console.error(`[API] Timeout fetching airport ${iataCode}`);
+      console.error(`[API] Timeout fetching airport ${airportCode}`);
       throw new Error('Request timeout. Please try again.');
     }
-    console.error(`[API] Error fetching airport ${iataCode}:`, error);
+    console.error(`[API] Error fetching airport ${airportCode}:`, error);
     throw error;
   }
 }
 
-function transformAirportData(apiData: any) {
-  // Based on Flight Radar API response structure
-  // You'll need to adjust this based on the actual response structure
-  
-  // Example transformation - adjust fields based on actual API response
+function transformAirportData(apiData: FlightRadarAirportFull) {
+  const elevationFeet = toNumber(apiData.elevation);
+  const timezoneOffsetSeconds = toNumber(apiData.timezone?.offset);
+
   return {
-    iata: apiData.iata || apiData.code || '',
+    iata: apiData.iata || '',
     icao: apiData.icao || '',
     name: apiData.name || '',
-    city: apiData.city || apiData.location?.city || '',
-    country: apiData.country || apiData.location?.country || '',
-    latitude: apiData.latitude || apiData.lat || apiData.location?.lat || 0,
-    longitude: apiData.longitude || apiData.lon || apiData.location?.lon || 0,
-    timezone: apiData.timezone || apiData.time_zone || '',
-    altitude: apiData.altitude || apiData.elevation || apiData.elevation_ft || 0,
-    runways: apiData.runways || apiData.runway_count || 0,
-    majorcities: apiData.city || apiData.served_city || '',
-    // Additional fields that might be useful
-    website: apiData.website || '',
-    phone: apiData.phone || '',
-    email: apiData.email || '',
-    // Flight status information
-    arrivals_url: apiData.arrivals_url || '',
-    departures_url: apiData.departures_url || '',
+    city: apiData.city || '',
+    state: apiData.state || '',
+    country: apiData.country?.name || '',
+    country_code: apiData.country?.code || '',
+    latitude: toNumber(apiData.lat),
+    longitude: toNumber(apiData.lon),
+    timezone: apiData.timezone?.name || '',
+    timezone_offset: timezoneOffsetSeconds,
+    timezone_offset_hours: timezoneOffsetSeconds === undefined ? undefined : timezoneOffsetSeconds / 3600,
+    elevation: elevationFeet,
+    elevation_meters: elevationFeet === undefined ? undefined : Math.round(elevationFeet * 0.3048),
+    runways: Array.isArray(apiData.runways)
+      ? apiData.runways.map((runway) => ({
+          designator: runway.designator || '',
+          heading: toNumber(runway.heading),
+          length: toNumber(runway.length),
+          width: toNumber(runway.width),
+          elevation: toNumber(runway.elevation),
+          threshold_coordinates: isNumberArray(runway.thr_coordinates)
+            ? runway.thr_coordinates
+            : [],
+          surface_type: runway.surface?.type || '',
+          surface_description: runway.surface?.description || '',
+        }))
+      : [],
+    raw: apiData,
   };
+}
+
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+}
+
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
 }
 
 // Optional: Add endpoint for clearing cache (for development)
