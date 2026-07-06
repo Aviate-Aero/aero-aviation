@@ -16,6 +16,7 @@ import {
   Gauge,
   ClipboardList,
   Map,
+  Building2,
   Activity,
   Rows3,
   Route,
@@ -107,9 +108,16 @@ const apps = [
   {
     title: "Flight Tracker",
     description:
-      "Track live flights and airport activity with real-time aviation data.",
+      "Track live flights with real-time aviation data.",
     icon: <Plane className="h-6 w-6" />,
     route: "/flight-intel/flight-tracker",
+  },
+  {
+    title: "Airport Information",
+    description:
+      "Explore full FlightRadar24 airport profiles, location, timezone, elevation, and runway data.",
+    icon: <Building2 className="h-6 w-6" />,
+    route: "/flight-intel/airport-info",
   },
   {
     title: "Live Position Count",

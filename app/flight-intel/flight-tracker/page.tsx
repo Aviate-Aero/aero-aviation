@@ -1,61 +1,16 @@
 "use client"
 
-import { useState } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/tabs/Standard"
-import { Plane, Building, Radar, History, CloudSun, Gauge, Crosshair, Battery } from "lucide-react"
+import { Plane, Radar, History, CloudSun } from "lucide-react"
 import { Button } from "@/components/buttons/Standard"
 import { useRouter } from "next/navigation"
 import FlightInformation from "@/components/flight-intel/flight-tracker/flightDetails/Standard"
-import AirportInformation from "@/components/flight-intel/flight-tracker/airportInfo/Standard"
 import FlightTracker from "@/components/flight-intel/flight-tracker/flightSearch/main/Standard"
 import HistoricEvents from "@/components/flight-intel/flight-tracker/flightHistory/Standard"
 import WeatherTracker from "@/components/flight-intel/flight-tracker/weather/Standard"
 
-interface Flight {
-  fr24_id: string
-  flight: string
-  callsign: string
-  operating_as: string
-  painted_as: string
-  type: string
-  reg: string
-  orig_icao: string
-  orig_iata: string
-  datetime_takeoff: string
-  runway_takeoff: string
-  dest_icao: string
-  dest_iata: string
-  dest_icao_actual: string
-  dest_iata_actual: string
-  datetime_landed: string
-  runway_landed: string
-  flight_time: number
-  actual_distance: number
-  circle_distance: number
-  category: string | null
-  hex: string
-  first_seen: string
-  last_seen: string
-  flight_ended: boolean
-}
-
-interface Airport {
-  iata: string
-  icao: string
-  name: string
-  city?: string
-  country?: string
-  country_code?: string
-  elevation?: number
-  latitude?: number
-  longitude?: number
-  timezone?: string
-}
-
 export default function FlightTrackerPage() {
-  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null)
-  const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null)
   const router = useRouter()
 
   return (
@@ -111,11 +66,11 @@ export default function FlightTrackerPage() {
                 <Plane className="w-6 h-6 text-sky-400" />
               </div>
               <h1 className="text-3xl md:text-4xl font-light text-zinc-100">
-                Flight & Airport Tracker
+                Flight Tracker
               </h1>
             </div>
             <p className="text-lg text-zinc-400 max-w-2xl">
-              Search for flight information, airport details, and real‑time flight tracking
+              Search flight records, track live aircraft, review history, and check aviation weather.
             </p>
           </motion.div>
 
@@ -128,13 +83,6 @@ export default function FlightTrackerPage() {
   >
     <Plane className="w-5 h-5" />
     <span className="hidden sm:inline">Flight Info</span>
-  </TabsTrigger>
-  <TabsTrigger
-    value="airports"
-    className="flex items-center justify-center gap-2 py-3 px-5 rounded-full text-base font-medium text-zinc-400 data-[state=active]:bg-sky-500/20 data-[state=active]:text-sky-400 data-[state=active]:border data-[state=active]:border-sky-500/30 transition-all duration-300"
-  >
-    <Building className="w-5 h-5" />
-    <span className="hidden sm:inline">Airport Info</span>
   </TabsTrigger>
   <TabsTrigger
     value="tracker"
@@ -160,11 +108,7 @@ export default function FlightTrackerPage() {
 </TabsList>
 
             <TabsContent value="flights" className="space-y-6">
-              <FlightInformation onFlightSelect={setSelectedFlight} initialSearchType="flights" />
-            </TabsContent>
-
-            <TabsContent value="airports" className="space-y-6">
-              <AirportInformation onAirportSelect={setSelectedAirport} />
+              <FlightInformation initialSearchType="flights" />
             </TabsContent>
 
             <TabsContent value="tracker" className="space-y-6">
