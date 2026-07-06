@@ -201,7 +201,6 @@ export default function LiveFlightCountPage() {
       <section className="relative z-20 mx-auto w-full max-w-7xl px-4 pb-20 pt-32 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-
             <h1 className="text-3xl font-light text-zinc-100 md:text-5xl">
               Live Flight Positions Count
             </h1>
