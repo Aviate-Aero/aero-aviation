@@ -7,7 +7,7 @@ import FlightMap from '../../flightMaps/Standard';
 import FlightPerformanceDashboard from '../flightPerformance/Standard';
 import AirportDashboard from '../airportDashboard/Standard';
 import { Card, CardTitle, CardDescription } from '@/components/card/Standard';
-import { Plane, MapPin, List, Grid3x3, BarChart3 } from 'lucide-react';
+import { Plane, MapPin, List, Grid3x3, BarChart3, RefreshCw } from 'lucide-react';
 
 interface TrackPoint {
   timestamp: string;
@@ -22,12 +22,46 @@ interface TrackPoint {
   source?: string;
 }
 
+interface FlightRecord {
+  fr24_id: string;
+  flight?: string;
+  callsign?: string;
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lon?: number;
+  track?: number;
+  alt?: number;
+  gspeed?: number;
+  vspeed?: number;
+  squawk?: number;
+  timestamp?: string;
+  source?: string;
+  hex?: string;
+  type?: string;
+  reg?: string;
+  painted_as?: string;
+  operating_as?: string;
+  orig_iata?: string;
+  orig_icao?: string;
+  dest_iata?: string;
+  dest_icao?: string;
+  eta?: string;
+  on_ground?: boolean;
+}
+
+interface FlightSearchParams {
+  flights?: string;
+  airports?: string;
+  operating_as?: string;
+}
+
 export default function FlightTracker() {
-  const [flights, setFlights] = useState<any[]>([]);
+  const [flights, setFlights] = useState<FlightRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<string>('flight');
-  const [selectedFlight, setSelectedFlight] = useState<any>(null);
+  const [selectedFlight, setSelectedFlight] = useState<FlightRecord | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'table' | 'split'>('split');
   const [showPerformance, setShowPerformance] = useState(false);
   const [airportCode, setAirportCode] = useState<string>('');
@@ -37,15 +71,12 @@ export default function FlightTracker() {
   const [tracksLoading, setTracksLoading] = useState(false);
   const [tracksError, setTracksError] = useState<string | null>(null);
 
-  // Stores the latest search so we can repeat it every 30 seconds
-  const lastSearchRef = useRef<{ params: any; type: string } | null>(null);
-
-  // Prevents overlapping refresh requests
-  const refreshInProgressRef = useRef(false);
+  // Stores the latest search so the user can refresh manually.
+  const lastSearchRef = useRef<{ params: FlightSearchParams; type: string } | null>(null);
 
   const fetchFlights = useCallback(
     async (
-      params: any,
+      params: FlightSearchParams,
       type: string,
       options?: {
         silent?: boolean;
@@ -79,9 +110,9 @@ export default function FlightTracker() {
           throw new Error(`Error: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { flights?: FlightRecord[] };
 
-        const normalizedFlights = (data.flights || []).map((f: any) => ({
+        const normalizedFlights = (data.flights || []).map((f) => ({
           ...f,
           lat: f.latitude ?? f.lat,
           lon: f.longitude ?? f.lon,
@@ -89,15 +120,15 @@ export default function FlightTracker() {
 
         setFlights(normalizedFlights);
 
-        // During auto-refresh, keep the same selected aircraft selected,
+        // During manual refresh, keep the same selected aircraft selected,
         // but update its lat/lon/alt/speed/heading from the new API response.
-        setSelectedFlight((previousSelectedFlight: any) => {
+        setSelectedFlight((previousSelectedFlight) => {
           if (resetSelection) return null;
           if (!previousSelectedFlight?.fr24_id) return previousSelectedFlight;
 
           return (
             normalizedFlights.find(
-              (f: any) => f.fr24_id === previousSelectedFlight.fr24_id
+              (f) => f.fr24_id === previousSelectedFlight.fr24_id
             ) ?? previousSelectedFlight
           );
         });
@@ -108,7 +139,7 @@ export default function FlightTracker() {
 
         if (type === 'airport') {
           setActiveView('airport');
-          setAirportCode(params.airports);
+          setAirportCode(params.airports ?? '');
         } else {
           setActiveView('flight');
         }
@@ -120,7 +151,7 @@ export default function FlightTracker() {
           setError(message);
           setFlights([]);
         } else {
-          // For silent auto-refresh, do not clear the map on one failed request.
+          // For silent refresh, do not clear the map on one failed request.
           console.error('Silent flight refresh failed:', message);
         }
       } finally {
@@ -133,7 +164,7 @@ export default function FlightTracker() {
   );
 
   const handleSearch = useCallback(
-    async (params: any, type: string) => {
+    async (params: FlightSearchParams, type: string) => {
       lastSearchRef.current = { params, type };
 
       await fetchFlights(params, type, {
@@ -144,35 +175,14 @@ export default function FlightTracker() {
     [fetchFlights]
   );
 
-  // Auto-refresh only while the flight map is visible.
-  useEffect(() => {
-    const mapIsVisible =
-      activeView === 'flight' && (viewMode === 'map' || viewMode === 'split');
+  const handleManualRefresh = useCallback(async () => {
+    if (!lastSearchRef.current || isLoading) return;
 
-    if (!mapIsVisible) return;
-    if (!lastSearchRef.current) return;
-    if (flights.length === 0) return;
-
-    const intervalId = window.setInterval(async () => {
-      if (!lastSearchRef.current) return;
-      if (refreshInProgressRef.current) return;
-
-      refreshInProgressRef.current = true;
-
-      try {
-        await fetchFlights(lastSearchRef.current.params, lastSearchRef.current.type, {
-          silent: true,
-          resetSelection: false,
-        });
-      } finally {
-        refreshInProgressRef.current = false;
-      }
-    }, 30000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [activeView, viewMode, flights.length, fetchFlights]);
+    await fetchFlights(lastSearchRef.current.params, lastSearchRef.current.type, {
+      silent: false,
+      resetSelection: false,
+    });
+  }, [fetchFlights, isLoading]);
 
   useEffect(() => {
     if (activeView === 'flight' && flights.length > 0 && !selectedFlight) {
@@ -190,7 +200,7 @@ export default function FlightTracker() {
     const flightId = selectedFlight.fr24_id;
 
     // Fetch route/track only once per selected flight.
-    // Live movement comes from the 30-second flight position refresh above.
+    // Latest position updates only when the user refreshes the search.
     if (flightTracks[flightId]) return;
 
     const fetchTracks = async () => {
@@ -319,6 +329,17 @@ export default function FlightTracker() {
               {activeView === 'flight' ? 'Live Flight Data' : `${airportCode} Airport`}
             </h2>
 
+            {activeView === 'flight' && lastSearchRef.current && (
+              <button
+                onClick={handleManualRefresh}
+                disabled={isLoading}
+                className="px-4 py-2 text-sm font-medium bg-sky-500/15 text-sky-300 rounded-full border border-sky-500/30 hover:bg-sky-500/25 disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            )}
+
             {activeView === 'airport' && (
               <button
                 onClick={() => setActiveView('flight')}
@@ -352,7 +373,7 @@ export default function FlightTracker() {
                               Interactive Flight Map
                             </h3>
                             <p className="text-sm text-sky-400/80">
-                              Click on aircraft icons for details. Auto-refreshes every 30 seconds.
+                              Click on aircraft icons for details. Use refresh when you need updated positions.
                             </p>
                           </div>
                         </div>
@@ -424,8 +445,8 @@ export default function FlightTracker() {
                       </h3>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-emerald-400 font-mono">
-                          Auto-refresh: 30s
+                        <span className="text-xs text-sky-400 font-mono">
+                          Manual refresh
                         </span>
 
                         {selectedFlight && (
@@ -503,7 +524,7 @@ export default function FlightTracker() {
 
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500/10 rounded-full border border-sky-500/30">
                 <span className="text-sm font-medium text-sky-400">
-                  Tip: Try "UA123", "JFK", or "AA" to see flights on the map
+                  Tip: Try &quot;UA123&quot;, &quot;JFK&quot;, or &quot;AA&quot; to see flights on the map
                 </span>
               </div>
             </div>
