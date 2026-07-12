@@ -139,11 +139,6 @@ const LiveFlightBoardDemo = () => {
             </motion.div>
           ))}
         </motion.div>
-
-        {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-950/50 border-t border-slate-700 text-xs text-slate-400 font-medium">
-          Last updated: 11 Jul 2026, 17:25 UTC • Real-time updates enabled
-        </div>
       </div>
     </motion.div>
   )

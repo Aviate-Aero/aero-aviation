@@ -14,12 +14,6 @@ const FlightMapDemo = () => {
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-xl font-semibold text-white">Flight Map - UAL123</h3>
           <div className="flex gap-2">
-            <button className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white font-medium">
-              Manual refresh
-            </button>
-            <button className="text-xs px-3 py-1.5 rounded-lg border border-cyan-600 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white hover:from-cyan-500 hover:to-cyan-400 transition-colors font-bold shadow-lg shadow-cyan-500/20">
-              Show Performance
-            </button>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, type Variants } from "framer-motion"
-import { ArrowRight, Check, Cloud, Plane, Radio, TrendingUp } from "lucide-react"
+import { ArrowRight, Check, Cloud } from "lucide-react"
 import Link from "next/link"
 
 import FlightMapDemo from "@/components/features/flight-map-demo"
@@ -34,7 +34,6 @@ const features = [
     description:
       "Track aircraft position, route progress, distance and estimated flight time in a focused interface built for active operations.",
     points: ["Interactive route tracking", "Great-circle distance", "Flight-time estimates"],
-    icon: Plane,
     demo: <FlightMapDemo />,
   },
   {
@@ -43,7 +42,6 @@ const features = [
     description:
       "Monitor altitude, speed, vertical rate and the complete flight profile without losing the details that matter to your team.",
     points: ["Real-time telemetry", "Interactive performance charts", "Flight-envelope analysis"],
-    icon: TrendingUp,
     demo: <PerformanceMetricsDemo />,
   },
   {
@@ -52,7 +50,6 @@ const features = [
     description:
       "See schedules, gates and status changes in a single live view so teams can respond quickly when airport operations shift.",
     points: ["Real-time updates", "Clear flight information", "Status tracking and alerts"],
-    icon: Radio,
     demo: <LiveFlightBoardDemo />,
   },
 ]
@@ -66,14 +63,11 @@ export default function FeaturesPage() {
       >
         <div className="mx-auto max-w-7xl">
           <motion.div initial="hidden" animate="visible" className="max-w-4xl">
-            <motion.p variants={reveal} className="mb-5 text-sm font-medium uppercase tracking-[0.22em] text-sky-400">
-              Flight Core Intelligence
-            </motion.p>
-            <motion.h1 variants={reveal} className="max-w-4xl text-balance text-5xl font-light leading-[0.98] text-zinc-100 sm:text-6xl lg:text-8xl">
-              Aviation intelligence, aligned around the operation.
+            <motion.h1 variants={reveal} className="text-sky-400 max-w-4xl text-5xl font-light leading-[0.98] text-zinc-100 sm:text-6xl lg:text-8xl">
+               Flight Core Intelligence
             </motion.h1>
             <motion.p variants={reveal} className="mt-8 max-w-2xl text-lg leading-8 text-zinc-400 md:text-xl">
-              A connected view of weather, aircraft movement, performance and airport activity—designed to help aviation teams act with confidence.
+              Aviation intelligence, aligned around the operation.
             </motion.p>
             <motion.div variants={reveal} className="mt-10 flex flex-col gap-3 sm:flex-row">
               <Link href="/contact" className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-500 px-7 py-3.5 text-sm font-medium text-white transition-all duration-300 hover:bg-sky-600">
@@ -84,17 +78,6 @@ export default function FeaturesPage() {
               </Link>
             </motion.div>
           </motion.div>
-        </div>
-      </section>
-
-      <section className="border-y border-zinc-900 bg-zinc-950/60 px-6 py-6 lg:px-12">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
-          {["Live weather", "Global tracking", "Flight performance", "Airport status"].map((label, index) => (
-            <div key={label} className="flex items-center gap-3 text-sm text-zinc-400">
-              <span className="font-mono text-xs text-sky-500">0{index + 1}</span>
-              <span>{label}</span>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -113,7 +96,6 @@ export default function FeaturesPage() {
               >
                 <div className={`lg:col-span-5 ${index % 2 ? "lg:order-2" : ""}`}>
                   <div className="mb-7 flex h-11 w-11 items-center justify-center rounded-xl border border-sky-500/25 bg-sky-500/10">
-                    <Icon className="h-5 w-5 text-sky-400" />
                   </div>
                   <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-sky-400">{feature.eyebrow}</p>
                   <h2 className="text-balance text-3xl font-light leading-tight text-zinc-100 sm:text-4xl lg:text-5xl">{feature.title}</h2>
