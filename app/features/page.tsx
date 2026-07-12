@@ -58,7 +58,7 @@ export default function FeaturesPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <section
-        className="relative px-6 pb-24 lg:px-12 lg:pb-32"
+        className="relative px-6 pb-23 lg:px-10 lg:pb-30"
         style={{ paddingTop: "11rem" }}
       >
         <div className="mx-auto max-w-7xl">

@@ -38,18 +38,9 @@ const FlightMapDemo = () => {
           <div className="absolute bottom-4 right-4 space-y-2 rounded-lg border border-slate-600 bg-slate-900/90 p-4 text-xs shadow-xl backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="font-medium text-slate-200">Departure</span>
+              <span className="font-medium text-slate-200">ADS-B</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-cyan-400" />
-              <span className="font-medium text-slate-200">Aircraft</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-red-400" />
-              <span className="font-medium text-slate-200">Destination</span>
-            </div>
           </div>
         </div>
       </div>
