@@ -10,20 +10,20 @@ const FlightMapDemo = () => {
       transition={{ duration: 0.6 }}
       viewport={{ once: true }}
     >
-      <div className="bg-white/5 border border-white/10 rounded-lg p-6 backdrop-blur-sm overflow-hidden h-full min-h-96 hover:border-white/20 transition-colors">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-light text-white">Flight Map - UAL123</h3>
+      <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-6 overflow-hidden h-full min-h-96 shadow-xl">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-xl font-semibold text-white">Flight Map - UAL123</h3>
           <div className="flex gap-2">
-            <button className="text-xs px-3 py-1 rounded border border-white/10 hover:bg-white/5 transition-colors text-zinc-400 hover:text-white font-light">
+            <button className="text-xs px-3 py-1.5 rounded-lg border border-slate-600 hover:border-slate-500 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white font-medium">
               Manual refresh
             </button>
-            <button className="text-xs px-3 py-1 rounded border border-sky-400/50 bg-sky-400/10 text-sky-400 hover:bg-sky-400/20 transition-colors font-light">
+            <button className="text-xs px-3 py-1.5 rounded-lg border border-cyan-600 bg-gradient-to-r from-cyan-600 to-cyan-500 text-white hover:from-cyan-500 hover:to-cyan-400 transition-colors font-bold shadow-lg shadow-cyan-500/20">
               Show Performance
             </button>
           </div>
         </div>
 
-        <div className="relative bg-gradient-to-br from-sky-400/10 via-sky-300/5 to-sky-200/5 rounded-lg h-80 border border-white/10 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-slate-900 to-slate-950 rounded-lg h-80 border border-slate-700 overflow-hidden shadow-inner">
           {/* Map background */}
           <svg
             className="absolute inset-0 w-full h-full"
@@ -123,18 +123,18 @@ const FlightMapDemo = () => {
           </svg>
 
           {/* Bottom legend */}
-          <div className="absolute bottom-3 right-4 bg-black/40 backdrop-blur-sm rounded-lg p-3 border border-white/10 text-xs space-y-1">
+          <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-sm rounded-lg p-4 border border-slate-600 text-xs space-y-2 shadow-xl">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-400"></div>
-              <span className="text-white font-light">Departure</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+              <span className="text-slate-200 font-medium">Departure</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-sky-400"></div>
-              <span className="text-white font-light">Aircraft</span>
+              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+              <span className="text-slate-200 font-medium">Aircraft</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-red-400"></div>
-              <span className="text-white font-light">Destination</span>
+              <span className="text-slate-200 font-medium">Destination</span>
             </div>
           </div>
         </div>

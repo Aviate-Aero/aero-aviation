@@ -29,7 +29,7 @@ const features = [
     demo: <WeatherDemo />,
   },
   {
-    eyebrow: "Global tracking",
+    
     title: "Follow every movement on one operational map.",
     description:
       "Track aircraft position, route progress, distance and estimated flight time in a focused interface built for active operations.",
