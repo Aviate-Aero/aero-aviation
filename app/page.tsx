@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/buttons/Standard"
-import { FeaturesSection } from "@/components/Sections/features/Standard"
 import { CircleArrowRight } from "lucide-react"
 
 export default function Home() {
@@ -58,7 +57,6 @@ export default function Home() {
       </section>
 
       <div className="relative z-20">
-        <FeaturesSection />
       </div>
     </main>
   )
