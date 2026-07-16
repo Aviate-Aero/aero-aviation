@@ -2,6 +2,7 @@
 
 import { motion, type Variants } from "framer-motion"
 import { ArrowRight, Check, Cloud } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 
 import FlightMapDemo from "@/components/features/flight-map-demo"
@@ -54,6 +55,20 @@ const features = [
   },
 ]
 
+const testDocuments = [
+  { title: "GNSS Interference Over Doha", image: "/flight-core-system-testing/1.jpeg", width: 1044, height: 1600 },
+  { title: "Polar Route Surveillance", image: "/flight-core-system-testing/2.jpeg", width: 888, height: 1600 },
+  { title: "North Atlantic Oceanic Surveillance Trial", image: "/flight-core-system-testing/3.jpeg", width: 888, height: 1600 },
+  { title: "Aireon Space-Based ADS-B Surveillance Test", image: "/flight-core-system-testing/4.jpeg", width: 888, height: 1600 },
+  { title: "Oceanic NATS Testing Trial 2", image: "/flight-core-system-testing/5.jpeg", width: 888, height: 1600 },
+  { title: "Mahe Island, Seychelles — African Testing Phase 2", image: "/flight-core-system-testing/6.jpeg", width: 800, height: 1600 },
+  { title: "Aireon Satellite Transition Test", image: "/flight-core-system-testing/7.jpeg", width: 888, height: 1600 },
+  { title: "Aireon Space-Based ADS-B Surveillance Test", image: "/flight-core-system-testing/8.jpeg", width: 888, height: 1600 },
+  { title: "North Atlantic Oceanic Surveillance Trial", image: "/flight-core-system-testing/9.jpeg", width: 888, height: 1600 },
+  { title: "Aireon Space-Based ADS-B Surveillance Test", image: "/flight-core-system-testing/10.jpeg", width: 888, height: 1600 },
+  { title: "High Altitude Operational Certification", image: "/flight-core-system-testing/11.jpeg", width: 888, height: 1600 },
+]
+
 export default function FeaturesPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
@@ -84,7 +99,6 @@ export default function FeaturesPage() {
       <section className="px-6 py-24 lg:px-12 lg:py-32">
         <div className="mx-auto max-w-7xl space-y-28 lg:space-y-40">
           {features.map((feature, index) => {
-            const Icon = feature.icon
             return (
               <motion.article
                 key={feature.title}
@@ -128,6 +142,58 @@ export default function FeaturesPage() {
           <Link href="/contact" className="mt-8 inline-flex items-center gap-2 rounded-full bg-sky-500 px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-sky-600">
             Talk to our team <ArrowRight className="h-4 w-4" />
           </Link>
+        </div>
+      </section>
+
+      <section className="border-t border-zinc-900 px-6 py-24 lg:px-12 lg:py-32">
+        <div className="mx-auto max-w-7xl">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={reveal}
+            className="max-w-3xl"
+          >
+            <h2 className="mt-4 text-balance text-4xl font-light leading-tight text-zinc-100 sm:text-5xl lg:text-6xl">
+              Flight Core System Testing
+            </h2>
+            <p className="mt-6 max-w-2xl mb-6 text-base leading-7 text-zinc-400 md:text-lg md:leading-8">
+              Review the operational trials, surveillance validations and live-flight testing that support Flight Core Intelligence.
+            </p>
+          </motion.div>
+
+          <div className="mt-14 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {testDocuments.map((document) => (
+              <motion.article
+                key={document.image}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-60px" }}
+                variants={reveal}
+                className="group relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 transition duration-300 hover:-translate-y-1 hover:border-sky-500/40"
+              >
+                <a
+                  href={document.image}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400"
+                  aria-label={`Open ${document.title} in a new tab`}
+                >
+                  <div className="relative aspect-[4/5] overflow-hidden bg-zinc-900">
+                    <Image
+                      src={document.image}
+                      alt={`${document.title} document preview`}
+                      width={document.width}
+                      height={document.height}
+                      sizes="(min-width: 1280px) 405px, (min-width: 640px) 50vw, 100vw"
+                      className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  </div>
+                </a>
+              </motion.article>
+            ))}
+          </div>
         </div>
       </section>
     </main>
