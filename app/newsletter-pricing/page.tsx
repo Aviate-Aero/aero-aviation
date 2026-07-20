@@ -44,9 +44,6 @@ export default async function NewsletterPricingPage({
 
           <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
             <div>
-              <p className="mb-4 text-sm font-medium uppercase tracking-[0.28em] text-sky-400">
-                Aviate Pro Newsletter
-              </p>
               <h1 className="max-w-4xl text-5xl font-light leading-[1] text-zinc-100 md:text-6xl lg:text-7xl">
                 Aviation intelligence in your inbox.
               </h1>
@@ -58,14 +55,9 @@ export default async function NewsletterPricingPage({
             </div>
 
             <div className="rounded-[2rem] border border-sky-500/30 bg-zinc-950/80 p-6 shadow-2xl shadow-sky-950/30 backdrop-blur-xl md:p-8 mt-2">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300">
-                <Sparkles className="h-3.5 w-3.5" />
-                Newsletter Subscription
-              </div>
-
               <div className="mb-8">
                 <h2 className="text-2xl font-light text-zinc-100">
-                  Aviate Pro Intelligence Briefing
+                  Aviation Intelligence Newsletter
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-zinc-500">
                   Built for readers who want concise, aviation-focused updates
