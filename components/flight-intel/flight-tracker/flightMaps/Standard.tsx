@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { ComponentType } from 'react';
+import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import {
+  GeoJSON,
   MapContainer,
   TileLayer,
   Marker,
@@ -26,6 +28,8 @@ import {
   Gauge,
   SlidersHorizontal,
   Layers,
+  RefreshCw,
+  ShieldAlert,
   X,
   type LucideProps,
 } from 'lucide-react';
@@ -35,7 +39,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 // Fix default Leaflet marker icons in Next.js
-// @ts-ignore
+// @ts-expect-error Leaflet keeps this compatibility helper private in its types.
 delete L.Icon.Default.prototype._getIconUrl;
 
 L.Icon.Default.mergeOptions({
@@ -98,6 +102,31 @@ type WeatherLayer = {
   description: string;
   opacity: number;
   icon: ComponentType<LucideProps>;
+};
+
+type AdvisoryKind = 'AIRMET' | 'SIGMET';
+
+type AdvisoryProperties = {
+  id: string;
+  advisoryKind: AdvisoryKind;
+  product: string;
+  hazard: string;
+  qualifier: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  altitudeLow: string | null;
+  altitudeHigh: string | null;
+  movement: string | null;
+  issuingOffice: string | null;
+  firName: string | null;
+  rawText: string | null;
+};
+
+type AdvisoryCollection = FeatureCollection<Geometry, AdvisoryProperties> & {
+  meta?: {
+    fetchedAt?: string;
+    unavailableSources?: string[];
+  };
 };
 
 type TrackSourceKey =
@@ -265,17 +294,20 @@ function isValidTrackPoint(point: TrackPoint) {
 
 function MapController({ flight }: { flight?: Flight | null }) {
   const map = useMap();
+  const flightId = flight?.fr24_id;
+  const latitude = flight?.lat;
+  const longitude = flight?.lon;
 
   useEffect(() => {
-    if (isValidLatLon(flight?.lat, flight?.lon)) {
+    if (isValidLatLon(latitude, longitude)) {
       const currentZoom = map.getZoom();
 
-      map.flyTo([flight!.lat!, flight!.lon!], currentZoom, {
+      map.flyTo([latitude!, longitude!], currentZoom, {
         animate: true,
         duration: 0.8,
       });
     }
-  }, [flight?.fr24_id, flight?.lat, flight?.lon, map]);
+  }, [flightId, latitude, longitude, map]);
 
   return null;
 }
@@ -474,6 +506,413 @@ function WeatherControl({
   );
 }
 
+function AdvisoryLayer() {
+  const map = useMap();
+  const requestRef = useRef<AbortController | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [showSigmets, setShowSigmets] = useState(true);
+  const [showAirmets, setShowAirmets] = useState(true);
+  const [data, setData] = useState<AdvisoryCollection | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadAdvisories = useCallback(async () => {
+    if (!enabled) return;
+
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const bounds = map.getBounds();
+      const longitudeSpan = bounds.getEast() - bounds.getWest();
+      const west =
+        longitudeSpan >= 360 ? -180 : normalizeLongitude(bounds.getWest());
+      const east =
+        longitudeSpan >= 360 ? 180 : normalizeLongitude(bounds.getEast());
+      const bbox = [
+        clamp(bounds.getSouth(), -90, 90),
+        west,
+        clamp(bounds.getNorth(), -90, 90),
+        east,
+      ]
+        .map((value) => value.toFixed(3))
+        .join(',');
+
+      const response = await fetch(
+        `/api/aviation-weather/advisories?bbox=${encodeURIComponent(bbox)}`,
+        { signal: controller.signal }
+      );
+      const payload = (await response.json()) as
+        | AdvisoryCollection
+        | { message?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          'message' in payload && payload.message
+            ? payload.message
+            : 'Failed to load aviation advisories.'
+        );
+      }
+
+      setData(payload as AdvisoryCollection);
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === 'AbortError') {
+        return;
+      }
+
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : 'Failed to load aviation advisories.'
+      );
+    } finally {
+      if (requestRef.current === controller) {
+        setLoading(false);
+      }
+    }
+  }, [enabled, map]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    void loadAdvisories();
+    map.on('moveend', loadAdvisories);
+    const refreshTimer = window.setInterval(loadAdvisories, 5 * 60 * 1_000);
+
+    return () => {
+      map.off('moveend', loadAdvisories);
+      window.clearInterval(refreshTimer);
+      requestRef.current?.abort();
+    };
+  }, [enabled, loadAdvisories, map]);
+
+  useEffect(() => {
+    const controlContainer = document.querySelector(
+      '.advisory-leaflet-control'
+    ) as HTMLElement | null;
+
+    if (!controlContainer) return;
+    L.DomEvent.disableClickPropagation(controlContainer);
+    L.DomEvent.disableScrollPropagation(controlContainer);
+  }, [enabled, panelOpen, map]);
+
+  const visibleData = useMemo<AdvisoryCollection | null>(() => {
+    if (!data) return null;
+
+    return {
+      ...data,
+      features: data.features.filter((feature) => {
+        if (feature.properties.advisoryKind === 'SIGMET') return showSigmets;
+        return showAirmets;
+      }),
+    };
+  }, [data, showAirmets, showSigmets]);
+
+  const sigmetCount =
+    data?.features.filter(
+      (feature) => feature.properties.advisoryKind === 'SIGMET'
+    ).length ?? 0;
+  const airmetCount =
+    data?.features.filter(
+      (feature) => feature.properties.advisoryKind === 'AIRMET'
+    ).length ?? 0;
+  const unavailableSources = data?.meta?.unavailableSources ?? [];
+
+  return (
+    <>
+      {enabled && visibleData && visibleData.features.length > 0 && (
+        <GeoJSON
+          key={`${data?.meta?.fetchedAt ?? 'advisories'}-${showSigmets}-${showAirmets}`}
+          data={visibleData}
+          style={advisoryStyle}
+          onEachFeature={bindAdvisoryPopup}
+        />
+      )}
+
+      <div className="leaflet-top leaflet-left" style={{ top: 58 }}>
+        <div className="leaflet-control advisory-leaflet-control ml-4 mt-4">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              if (!enabled) {
+                setEnabled(true);
+                setPanelOpen(true);
+              } else {
+                setPanelOpen((current) => !current);
+              }
+            }}
+            className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-black/70 px-3 py-2.5 text-sm font-medium text-white shadow-2xl shadow-black/50 backdrop-blur-md transition hover:border-red-400/50"
+          >
+            <ShieldAlert className="h-4 w-4 text-red-400" />
+            <span>Advisories</span>
+            {enabled && (
+              <span className="rounded-full bg-red-400/15 px-1.5 py-0.5 text-[10px] text-red-300">
+                {visibleData?.features.length ?? 0}
+              </span>
+            )}
+          </button>
+
+          {enabled && panelOpen && (
+            <div className="mt-3 w-[235px] rounded-2xl border border-zinc-800 bg-black/75 p-4 text-white shadow-2xl shadow-black/50 backdrop-blur-md sm:w-[260px]">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold">AIRMET / SIGMET</h2>
+                  <p className="mt-1 text-[11px] leading-4 text-zinc-400">
+                    Active advisories in the visible map area.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPanelOpen(false)}
+                  aria-label="Hide advisory panel"
+                  className="-mr-1 -mt-1 rounded-md p-1 text-zinc-400 transition-colors hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <AdvisoryToggle
+                  checked={showSigmets}
+                  color="bg-red-500"
+                  count={sigmetCount}
+                  description="Significant hazards to aircraft"
+                  label="SIGMET"
+                  onChange={setShowSigmets}
+                />
+                <AdvisoryToggle
+                  checked={showAirmets}
+                  color="bg-amber-400"
+                  count={airmetCount}
+                  description="G-AIRMET and Alaska AIRMET"
+                  label="AIRMET"
+                  onChange={setShowAirmets}
+                />
+              </div>
+
+              <div className="mt-3 flex items-center justify-between border-t border-zinc-800 pt-3">
+                <div className="text-[10px] leading-4 text-zinc-500">
+                  <div>Source: AWC / NWS</div>
+                  {data?.meta?.fetchedAt && (
+                    <div>Updated {formatUtcTime(data.meta.fetchedAt)}</div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void loadAdvisories()}
+                  disabled={loading}
+                  aria-label="Refresh aviation advisories"
+                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-zinc-300 transition hover:border-sky-400/50 hover:text-sky-300 disabled:cursor-wait disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`}
+                  />
+                </button>
+              </div>
+
+              {loading && !data && (
+                <p className="mt-3 text-xs text-zinc-400">
+                  Loading active advisories…
+                </p>
+              )}
+
+              {error && (
+                <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-[11px] leading-4 text-red-300">
+                  {error}
+                </p>
+              )}
+
+              {!loading && !error && visibleData?.features.length === 0 && (
+                <p className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-2 text-[11px] leading-4 text-zinc-400">
+                  No selected advisories intersect this view.
+                </p>
+              )}
+
+              {unavailableSources.length > 0 && (
+                <p className="mt-3 text-[10px] leading-4 text-amber-300">
+                  Temporarily unavailable: {unavailableSources.join(', ')}
+                </p>
+              )}
+
+              <p className="mt-3 text-[10px] leading-4 text-zinc-500">
+                Situational awareness only. Verify against an official flight
+                briefing before operational use.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AdvisoryToggle({
+  checked,
+  color,
+  count,
+  description,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  color: string;
+  count: number;
+  description: string;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-sky-400"
+      />
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-sm ${color}`} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-medium text-zinc-100">{label}</span>
+        <span className="block truncate text-[10px] text-zinc-500">
+          {description}
+        </span>
+      </span>
+      <span className="text-xs tabular-nums text-zinc-400">{count}</span>
+    </label>
+  );
+}
+
+function advisoryStyle(feature?: Feature<Geometry, AdvisoryProperties>) {
+  const properties = feature?.properties;
+  const hazard = properties?.hazard.toUpperCase() ?? '';
+  let color = properties?.advisoryKind === 'SIGMET' ? '#ef4444' : '#f59e0b';
+
+  if (hazard.includes('CONVECTIVE') || hazard.includes('TS')) color = '#e11d48';
+  if (hazard.includes('ICE')) color = '#38bdf8';
+  if (hazard.includes('TURB')) color = '#f97316';
+  if (hazard.includes('IFR') || hazard.includes('MTN')) color = '#a78bfa';
+  if (hazard.includes('ASH') || hazard.includes('VA')) color = '#71717a';
+
+  return {
+    color,
+    fillColor: color,
+    fillOpacity: properties?.advisoryKind === 'SIGMET' ? 0.24 : 0.17,
+    opacity: 0.9,
+    weight: properties?.advisoryKind === 'SIGMET' ? 2.5 : 2,
+    dashArray: properties?.advisoryKind === 'AIRMET' ? '6 5' : undefined,
+  };
+}
+
+function bindAdvisoryPopup(
+  feature: Feature<Geometry, AdvisoryProperties>,
+  layer: L.Layer
+) {
+  const advisory = feature.properties;
+  const altitude = formatAltitudeRange(
+    advisory.altitudeLow,
+    advisory.altitudeHigh
+  );
+  const rawText = advisory.rawText
+    ? advisory.rawText.slice(0, 1_500)
+    : null;
+
+  layer.bindPopup(
+    `<div style="min-width:240px;max-width:360px;color:#18181b">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+        <strong>${escapeHtml(advisory.advisoryKind)} · ${escapeHtml(advisory.hazard)}</strong>
+        ${advisory.qualifier ? `<span style="font-size:11px;font-weight:600">${escapeHtml(advisory.qualifier)}</span>` : ''}
+      </div>
+      <div style="font-size:12px;line-height:1.55">
+        ${popupRow('Product', advisory.product)}
+        ${popupRow('Valid', formatValidity(advisory.validFrom, advisory.validTo))}
+        ${popupRow('Altitude', altitude)}
+        ${popupRow('Movement', advisory.movement)}
+        ${popupRow('FIR / Area', advisory.firName)}
+        ${popupRow('Issued by', advisory.issuingOffice)}
+      </div>
+      ${
+        rawText
+          ? `<details style="margin-top:10px;border-top:1px solid #e4e4e7;padding-top:8px">
+              <summary style="cursor:pointer;font-size:12px;font-weight:600">Raw bulletin</summary>
+              <pre style="margin-top:7px;max-height:180px;overflow:auto;white-space:pre-wrap;font:10px/1.45 ui-monospace,monospace">${escapeHtml(rawText)}</pre>
+            </details>`
+          : ''
+      }
+    </div>`,
+    { maxWidth: 380 }
+  );
+}
+
+function popupRow(label: string, value: string | null) {
+  if (!value) return '';
+  return `<div style="display:grid;grid-template-columns:76px 1fr;gap:8px"><span style="color:#71717a">${escapeHtml(label)}</span><span>${escapeHtml(value)}</span></div>`;
+}
+
+function formatValidity(validFrom: string | null, validTo: string | null) {
+  if (!validFrom && !validTo) return null;
+  if (validFrom && validTo) {
+    return `${formatUtcDateTime(validFrom)} – ${formatUtcDateTime(validTo)}`;
+  }
+  return formatUtcDateTime(validFrom ?? validTo!);
+}
+
+function formatAltitudeRange(low: string | null, high: string | null) {
+  if (low && high) return low === high ? high : `${low} – ${high}`;
+  if (high) return `Up to ${high}`;
+  if (low) return `Above ${low}`;
+  return null;
+}
+
+function formatUtcDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  }).format(date);
+}
+
+function formatUtcTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'recently';
+  return `${date.toISOString().slice(11, 16)} UTC`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;',
+    };
+    return entities[character];
+  });
+}
+
+function normalizeLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
 const createPlaneIcon = (
   heading: number = 0,
   isOnGround: boolean = false,
@@ -618,12 +1057,6 @@ export default function FlightMap({
       `[FlightMap] tracks for ${selectedFlight?.fr24_id}: ${tracks.length} points`
     );
   }, [tracks, selectedFlight]);
-
-  useEffect(() => {
-    if (window.matchMedia('(max-width: 767px)').matches) {
-      setWeatherPanelOpen(false);
-    }
-  }, []);
 
   function handleWeatherLayerChange(layer: WeatherLayer) {
     setActiveWeatherLayer(layer);
@@ -847,6 +1280,8 @@ export default function FlightMap({
           setWeatherOpacity={setWeatherOpacity}
           handleWeatherLayerChange={handleWeatherLayerChange}
         />
+
+        <AdvisoryLayer />
 
         <MapController flight={selectedFlight} />
 
