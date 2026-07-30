@@ -29,6 +29,8 @@ import {
   Satellite,
   ShieldAlert,
   CloudSun,
+  MessagesSquare,
+  Fingerprint,
 } from "lucide-react";
 import { useAuth } from "./auth-context"
 
@@ -111,6 +113,20 @@ const apps = [
       "Track live flights with real-time aviation data.",
     icon: <Plane className="h-6 w-6" />,
     route: "/flight-intel/flight-tracker",
+  },
+  {
+    title: "ACARS Intelligence",
+    description:
+      "Explore community ACARS, VDL2, and HFDL communications from Airframes.",
+    icon: <MessagesSquare className="h-6 w-6" />,
+    route: "/flight-intel/acars-intelligence",
+  },
+  {
+    title: "Aircraft Lookup",
+    description:
+      "Identify aircraft by tail or Mode-S and review registration history.",
+    icon: <Fingerprint className="h-6 w-6" />,
+    route: "/flight-intel/aircraft-lookup",
   },
   {
     title: "Airport Information",
@@ -355,6 +371,10 @@ const apps = [
 
                 <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
                   Skylink API
+                </span>
+
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">
+                  Airframes
                 </span>
 
                 <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-400">

@@ -40,7 +40,7 @@ export default function Home() {
                 ease: [0.25, 0.1, 0.25, 1],
               }}
             >
-              AI-Powered Aviation Intelligence Platform
+              An Aviation Intelligence Platform
             </motion.p>
 
             <motion.div
