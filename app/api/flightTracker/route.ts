@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = 'https://fr24api.flightradar24.com';
-const API_TOKEN = process.env.FLIGHT_RADAR_API_KEY;
+const API_TOKEN = process.env.FLIGHT_RADAR_API_KE;
 const CACHE_TTL_MS = 30000;
 
 type FlightTrackerResponse = {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!API_TOKEN) {
       return NextResponse.json(
-        { error: 'Flight Radar API token not configured' },
+        { error: 'Network Error!' },
         { status: 500 }
       );
     }
